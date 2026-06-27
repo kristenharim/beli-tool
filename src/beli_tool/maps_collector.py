@@ -11,7 +11,7 @@ def collect_maps(saved_dir: str | Path) -> list[RawPlace]:
     places: list[RawPlace] = []
     for csv_path in sorted(saved_dir.glob("*.csv")):
         list_name = csv_path.stem
-        with csv_path.open(newline="", encoding="utf-8") as f:
+        with csv_path.open(newline="", encoding="utf-8-sig") as f:
             for row in csv.DictReader(f):
                 title = (row.get("Title") or "").strip()
                 if not title:

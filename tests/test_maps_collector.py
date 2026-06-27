@@ -12,3 +12,11 @@ def test_collect_maps_reads_titles_and_skips_blank():
     assert len(places) == 2  # blank-title row skipped
     assert all(p.source == "maps" for p in places)
     assert places[0].source_list == "Want to go"
+
+
+def test_collect_maps_handles_utf8_bom(tmp_path):
+    csv_path = tmp_path / "Faves.csv"
+    csv_path.write_text("Title,Note,URL\nLilia,,u\n", encoding="utf-8-sig")
+    places = collect_maps(tmp_path)
+    assert [p.name for p in places] == ["Lilia"]
+    assert places[0].source_list == "Faves"
