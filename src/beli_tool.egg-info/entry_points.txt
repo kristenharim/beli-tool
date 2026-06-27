@@ -1,0 +1,2 @@
+[console_scripts]
+beli-tool = beli_tool.cli:main

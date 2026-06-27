@@ -1,0 +1,3 @@
+google_places_api_key = "PASTE_YOUR_KEY_HERE"
+saved_dir = "~/beli-tool/inbox"
+db_path = "~/beli-tool/ledger.sqlite"
