@@ -19,7 +19,7 @@ def load_config(path: str | Path | None = None) -> Config:
     path = Path(path) if path else DEFAULT_HOME / "config.toml"
     data: dict = {}
     if path.exists():
-        data = tomllib.loads(path.read_text())
+        data = tomllib.load(path.open("rb"))
     api_key = data.get("google_places_api_key") or os.environ.get("BELI_PLACES_KEY", "")
     if not api_key:
         raise RuntimeError(

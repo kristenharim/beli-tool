@@ -16,3 +16,11 @@ def test_load_config_missing_key_raises(tmp_path, monkeypatch):
     cfg_file.write_text("saved_dir = \"/tmp/x\"\n")
     with pytest.raises(RuntimeError):
         load_config(cfg_file)
+
+
+def test_load_config_env_var_fallback(tmp_path, monkeypatch):
+    monkeypatch.setenv("BELI_PLACES_KEY", "ENVKEY")
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text("saved_dir = \"/tmp/x\"\n")
+    cfg = load_config(cfg_file)
+    assert cfg.api_key == "ENVKEY"
