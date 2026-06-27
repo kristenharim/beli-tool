@@ -20,3 +20,11 @@ def test_ledger_reinsert_is_idempotent():
     led.mark_added("p1", "Lilia", "been", "loved")
     led.mark_added("p1", "Lilia", "been", "fine")
     assert len(led.handled_ids()) == 1
+
+
+def test_ledger_upsert_updates_rating():
+    led = Ledger(":memory:")
+    led.mark_added("p1", "Lilia", "been", "loved")
+    led.mark_added("p1", "Lilia", "been", "fine")
+    row = led.conn.execute("SELECT rating FROM handled WHERE place_id = 'p1'").fetchone()
+    assert row[0] == "fine"

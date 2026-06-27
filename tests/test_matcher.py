@@ -53,3 +53,12 @@ def test_match_photo_ambiguous_two_close():
     assert m.status == "ambiguous"
     assert {c.place_id for c in m.candidates} == {"p1", "p2"}
     assert m.match is None
+
+
+def test_match_photo_no_food_nearby():
+    raw = RawPlace(source="photos", lat=40.0, lon=-73.0)
+    client = FakeClient(nearby=[
+        {"place_id": "p9", "name": "Some Park", "vicinity": "x",
+         "types": ["park"], "geometry": {"location": {"lat": 40.0, "lng": -73.0}}}])
+    m = match_photo_cluster(raw, client)
+    assert m.status == "no_match" and m.bucket == "been" and m.match is None

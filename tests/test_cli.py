@@ -1,4 +1,3 @@
-from datetime import date
 from beli_tool.config import Config
 from beli_tool.cli import build_app_from_config, local_ip
 

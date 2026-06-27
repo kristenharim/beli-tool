@@ -7,6 +7,7 @@ from pathlib import Path
 
 class Ledger:
     def __init__(self, db_path: str | Path = ":memory:"):
+        # Invariant: every access to self.conn MUST hold self._lock (check_same_thread=False removes sqlite's own guard).
         self._lock = threading.Lock()
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         with self._lock:

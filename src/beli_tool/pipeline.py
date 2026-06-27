@@ -27,6 +27,7 @@ def build_queue(
         m = match_maps_place(raw, client)
         if m.status == "no_match":
             q.review.append(m)
+        # match_maps_place only returns confident|no_match (never ambiguous), so gating dedupe here is safe.
         elif m.match and m.match.place_id in handled:
             continue
         else:

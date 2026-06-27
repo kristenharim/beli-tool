@@ -6,6 +6,10 @@ from beli_tool.models import MatchedPlace, PlaceCandidate, RawPlace
 _FOOD_TYPES = {"restaurant", "food", "cafe", "bar", "bakery", "meal_takeaway"}
 
 
+def _dist(c: PlaceCandidate) -> float:
+    return c.distance_m if c.distance_m is not None else 1e9
+
+
 def match_maps_place(raw: RawPlace, client) -> MatchedPlace:
     results = client.text_search(raw.name or "")
     if not results:
@@ -40,9 +44,9 @@ def match_photo_cluster(
                 distance_m=haversine_m(raw.lat, raw.lon, loc["lat"], loc["lng"]),
             )
         )
-    cands.sort(key=lambda c: c.distance_m if c.distance_m is not None else 1e9)
+    cands.sort(key=_dist)
 
-    near = [c for c in cands if (c.distance_m if c.distance_m is not None else 1e9) <= ambiguous_radius_m]
+    near = [c for c in cands if _dist(c) <= ambiguous_radius_m]
     if len(near) >= 2:
         return MatchedPlace(bucket="been", status="ambiguous", raw=raw, candidates=near)
     return MatchedPlace(bucket="been", status="confident", raw=raw, match=cands[0])
