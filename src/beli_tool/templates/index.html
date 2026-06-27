@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Beli staging</title>
+<style>
+  body { font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 16px; }
+  h2 { font-weight: 500; }
+  .card { border: 1px solid #ddd; border-radius: 12px; padding: 16px; margin: 12px 0; }
+  .muted { color: #777; font-size: 14px; }
+  button { font-size: 16px; padding: 10px 14px; margin: 4px 4px 0 0; border-radius: 8px; border: 1px solid #ccc; background: #fff; }
+  .added { background: #e6f1fb; }
+</style>
+</head>
+<body>
+<h2>Want to try (<span id="want-count">0</span>)</h2>
+<div id="want"></div>
+<h2>Been (<span id="been-count">0</span>)</h2>
+<div id="been"></div>
+<script>
+async function load() {
+  const q = await (await fetch('/api/queue')).json();
+  render('want', q.want_to_try, false);
+  render('been', q.been, true);
+  document.getElementById('want-count').textContent = q.want_to_try.length;
+  document.getElementById('been-count').textContent = q.been.length;
+}
+function render(id, items, isBeen) {
+  const root = document.getElementById(id);
+  root.innerHTML = '';
+  for (const it of items) {
+    const div = document.createElement('div');
+    div.className = 'card';
+    let inner = `<div><strong>${it.name ?? '(pick one below)'}</strong></div>`
+      + `<div class="muted">${it.address ?? ''}</div>`;
+    if (isBeen && it.visit_date) inner += `<div class="muted">${it.visit_date} · ${it.photo_count} photos</div>`;
+    if (it.status === 'ambiguous') {
+      inner += '<div class="muted">Which place?</div>';
+      for (const c of it.candidates) {
+        inner += `<button onclick="added('${c.place_id}','${c.name.replace(/'/g,"")}','${it.bucket}', null)">${c.name}</button>`;
+      }
+    } else {
+      if (isBeen) {
+        for (const [emoji, val] of [['😍','loved'],['😐','fine'],['😞','disliked']]) {
+          inner += `<button data-rating="${val}">${emoji}</button>`;
+        }
+      }
+      inner += `<button onclick="copyOpen('${(it.name||'').replace(/'/g,"")}')">Copy & open Beli</button>`;
+      inner += `<button class="added" onclick="added('${it.place_id}','${(it.name||'').replace(/'/g,"")}','${it.bucket}', currentRating(this))">Added ✓</button>`;
+      inner += `<button onclick="skip('${it.place_id}')">Skip</button>`;
+    }
+    div.innerHTML = inner;
+    root.appendChild(div);
+  }
+}
+function currentRating(btn){ const r = btn.parentElement.querySelector('[data-rating].sel'); return r ? r.dataset.rating : null; }
+document.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.rating) {
+  e.target.parentElement.querySelectorAll('[data-rating]').forEach(b=>b.classList.remove('sel'));
+  e.target.classList.add('sel'); } });
+function copyOpen(name){ navigator.clipboard && navigator.clipboard.writeText(name); window.location.href = 'beli://'; }
+async function added(place_id, name, bucket, rating){
+  await fetch('/api/added', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({place_id, name, bucket, rating})}); load();
+}
+async function skip(place_id){
+  await fetch('/api/skip', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({place_id})}); load();
+}
+load();
+</script>
+</body>
+</html>

@@ -6,7 +6,7 @@ from pathlib import Path
 
 class Ledger:
     def __init__(self, db_path: str | Path = ":memory:"):
-        self.conn = sqlite3.connect(str(db_path))
+        self.conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self.conn.execute(
             """CREATE TABLE IF NOT EXISTS handled (
                 place_id TEXT PRIMARY KEY,
