@@ -18,6 +18,8 @@ def test_two_visits_split_by_distance():
     assert len(clusters) == 2
     counts = sorted(c.count for c in clusters)
     assert counts == [1, 2]
+    two_pt = next(c for c in clusters if c.count == 2)
+    assert {p.id for p in two_pt.points} == {"a", "b"}
 
 
 def test_same_place_different_day_splits_by_time():

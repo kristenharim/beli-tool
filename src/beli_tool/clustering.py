@@ -54,6 +54,8 @@ def cluster_photos(
         placed = False
         for c in clusters:
             within_space = haversine_m(pt.lat, pt.lon, c.lat, c.lon) <= radius_m
+            # input is time-sorted, so c.points[-1] is the cluster's most recent
+            # point; abs() is defensive against any future unsorted caller
             within_time = (
                 abs((pt.taken - c.points[-1].taken).total_seconds())
                 <= time_gap_hours * 3600
