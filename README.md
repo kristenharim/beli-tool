@@ -9,7 +9,7 @@ only places you haven't handled yet.
 ## One-time setup
 
 1. Create a free Google Places API key (Maps Platform → Places API).
-2. `cp config.example.toml config.toml` and paste your key.
+2. `cp config.example.toml ~/beli-tool/config.toml` and paste your key.
 3. `python3 -m venv .venv && . .venv/bin/activate && pip install -e .`
 4. Grant Photos access when macOS prompts on first run.
 
