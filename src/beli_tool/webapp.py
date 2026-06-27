@@ -48,6 +48,8 @@ def _visible(items: list[MatchedPlace], handled: set[str]) -> list[dict]:
     for m in items:
         if m.match and m.match.place_id in handled:
             continue
+        if m.candidates and any(c.place_id in handled for c in m.candidates):
+            continue
         out.append(_serialize(m))
     return out
 

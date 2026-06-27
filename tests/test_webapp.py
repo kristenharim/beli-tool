@@ -44,3 +44,22 @@ def test_index_serves_html():
     r = client.get("/")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
+
+
+def test_ambiguous_item_filtered_when_candidate_handled():
+    amb = MatchedPlace(
+        bucket="been", status="ambiguous",
+        raw=RawPlace(source="photos", lat=40.72, lon=-73.98),
+        candidates=[
+            PlaceCandidate(place_id="c1", name="Los Tacos No. 1", address="75 9th Ave", category="restaurant"),
+            PlaceCandidate(place_id="c2", name="Time Out Market", address="55 Water St", category="restaurant"),
+        ],
+    )
+    led = Ledger(":memory:")
+    client = TestClient(create_app(Queue(been=[amb]), led))
+    data = client.get("/api/queue").json()
+    assert len(data["been"]) == 1
+    assert data["been"][0]["place_id"] is None
+    assert {c["name"] for c in data["been"][0]["candidates"]} == {"Los Tacos No. 1", "Time Out Market"}
+    client.post("/api/added", json={"place_id": "c1", "name": "Los Tacos No. 1", "bucket": "been", "rating": "loved"})
+    assert client.get("/api/queue").json()["been"] == []
