@@ -56,6 +56,13 @@ is retained as a nice-to-have.
 and the live SQLite ledger would otherwise risk iCloud sync conflicts and
 partial writes.
 
+### Core/front-end separation (distribution-ready)
+The pipeline logic (extract, match, dedupe) is built as a standalone **core
+package** with no dependency on the web layer. The web app is one *front-end*
+that drives the core. This keeps a future browser-based "web-lite" front-end
+(see §9) a small add rather than a rewrite, and makes the core unit-testable on
+its own.
+
 ### Pipeline — four independently runnable stages
 
 1. **Extract** — two collectors produce a common "raw place" record:
@@ -148,7 +155,37 @@ is testable in isolation.
 - **Ambiguous photo matches need a glance** to confirm; the tool never silently
   guesses wrong.
 
-## 9. Testing approach
+## 9. Distribution & packaging
+
+A hosted cloud website cannot read the local Apple Photos library — code that
+touches Photos must run on the user's Mac. The tool is therefore distributed as
+a **local app**, with a free project website acting as the front door.
+
+**Committed path: local app via GitHub Releases + a GitHub Pages page.**
+
+- **Packaging**: bundle the Python tool into a double-clickable macOS `.app`
+  using `PyInstaller` or `py2app`. Launching it starts the local FastAPI server
+  and opens the browser to the worklist.
+- **Build & host**: a public GitHub repo. **GitHub Actions** (free, unlimited
+  minutes on public repos) builds the `.app` on each tagged release and attaches
+  it to a **GitHub Release** (free download hosting).
+- **Front door**: a **GitHub Pages** site (free) with screenshots, a setup
+  guide, and a Download button pointing at the latest Release.
+- **Gatekeeper caveat**: unsigned apps trigger a macOS "unidentified developer"
+  warning. Free workaround = right-click → Open on first launch. Proper
+  notarization (no warning) requires an Apple Developer account ($99/yr) and is
+  an optional later polish, not required for personal use.
+
+**Documented future options (not built now):**
+
+- *Web-lite, fully client-side*: a static GitHub Pages app where the user uploads
+  a Takeout CSV + exported photos and EXIF GPS is parsed in-browser (nothing sent
+  to a server). Trades the auto-read of Apple Photos for zero-install. Enabled by
+  the core/front-end separation in §3. The Google Places key would need
+  domain-restriction or a free in-browser reverse-geocoder.
+- *Apple notarization* for a warning-free download, if distribution widens.
+
+## 10. Testing approach
 
 - `maps_collector`: fixture Takeout CSVs → expected raw records.
 - `photos_collector`: clustering logic tested with synthetic (lat, lon, time)
