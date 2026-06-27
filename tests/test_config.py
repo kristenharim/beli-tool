@@ -1,0 +1,18 @@
+import pytest
+from beli_tool.config import load_config
+
+
+def test_load_config_reads_toml(tmp_path):
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('google_places_api_key = "KEY123"\n')
+    cfg = load_config(cfg_file)
+    assert cfg.api_key == "KEY123"
+    assert cfg.saved_dir.name == "inbox"
+
+
+def test_load_config_missing_key_raises(tmp_path, monkeypatch):
+    monkeypatch.delenv("BELI_PLACES_KEY", raising=False)
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text("saved_dir = \"/tmp/x\"\n")
+    with pytest.raises(RuntimeError):
+        load_config(cfg_file)
