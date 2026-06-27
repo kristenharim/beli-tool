@@ -6,3 +6,6 @@ config.local.*
 *.sqlite
 *.sqlite3
 .DS_Store
+*.egg-info/
+build/
+dist/

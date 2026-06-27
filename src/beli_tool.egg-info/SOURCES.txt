@@ -1,9 +1,0 @@
-pyproject.toml
-src/beli_tool/__init__.py
-src/beli_tool.egg-info/PKG-INFO
-src/beli_tool.egg-info/SOURCES.txt
-src/beli_tool.egg-info/dependency_links.txt
-src/beli_tool.egg-info/entry_points.txt
-src/beli_tool.egg-info/requires.txt
-src/beli_tool.egg-info/top_level.txt
-tests/test_models.py
