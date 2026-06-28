@@ -37,6 +37,7 @@ def _serialize(m: MatchedPlace) -> dict:
         "visit_date": vd,
         "photo_count": m.raw.photo_count,
         "photo_ref": m.raw.photo_ref,
+        "photo_refs": m.raw.photo_refs,
         "candidates": [
             {"place_id": c.place_id, "name": c.name, "address": c.address}
             for c in m.candidates
