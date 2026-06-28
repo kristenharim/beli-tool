@@ -14,6 +14,7 @@ class RawPlace(BaseModel):
     lon: float | None = None
     visit_date: date | None = None
     photo_ref: str | None = None
+    photo_refs: list[str] = Field(default_factory=list)
     photo_count: int = 0
     source_list: str | None = None
 

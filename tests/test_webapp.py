@@ -11,7 +11,7 @@ def _queue():
     been = MatchedPlace(
         bucket="been", status="confident",
         raw=RawPlace(source="photos", lat=40.7, lon=-73.9, visit_date=date(2026, 4, 12),
-                     photo_count=4, photo_ref="uuid-b1"),
+                     photo_count=4, photo_ref="uuid-b1", photo_refs=["uuid-b1", "uuid-b2"]),
         match=PlaceCandidate(place_id="b1", name="Lilia", address="567 Union Ave", category="restaurant"),
     )
     want = MatchedPlace(
@@ -28,6 +28,7 @@ def test_queue_endpoint_lists_items():
     assert [i["name"] for i in data["been"]] == ["Lilia"]
     assert data["been"][0]["photo_count"] == 4
     assert data["been"][0]["photo_ref"] == "uuid-b1"
+    assert data["been"][0]["photo_refs"] == ["uuid-b1", "uuid-b2"]
     assert [i["name"] for i in data["want_to_try"]] == ["Dhamaka"]
 
 

@@ -22,4 +22,5 @@ def test_collect_photos_makes_one_rawplace_per_cluster():
     assert all(r.source == "photos" for r in raws)
     dinner = [r for r in raws if r.photo_count == 2][0]
     assert dinner.visit_date.isoformat() == "2026-04-12"
-    assert dinner.photo_ref in {"a", "b"}
+    assert dinner.photo_ref == "a"  # representative = earliest
+    assert dinner.photo_refs == ["a", "b"]  # full gallery, chronological

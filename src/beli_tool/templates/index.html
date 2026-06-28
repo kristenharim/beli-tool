@@ -24,10 +24,16 @@
           box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: box-shadow .15s, border-color .15s; }
   .card.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(47,111,237,.18); }
   .thumb { position:relative; width:100%; aspect-ratio: 16/10; background:#e9ebef; overflow:hidden; }
-  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-  .thumb.noimg img { display:none; }
+  .gallery { display:flex; width:100%; height:100%; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
+  .gallery::-webkit-scrollbar { display:none; }
+  .slide { flex:0 0 100%; height:100%; scroll-snap-align:center; }
+  .slide img { width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb.noimg .gallery { display:none; }
   .thumb.noimg::after { content:'🍽'; position:absolute; inset:0; display:flex; align-items:center;
                         justify-content:center; font-size:34px; opacity:.35; }
+  .dots { position:absolute; left:0; right:0; bottom:10px; display:flex; gap:6px; justify-content:center; pointer-events:none; }
+  .dots i { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.55); box-shadow:0 0 2px rgba(0,0,0,.45); transition:transform .12s; }
+  .dots i.on { background:#fff; transform:scale(1.3); }
   .pcount { position:absolute; left:10px; bottom:10px; background:rgba(0,0,0,.55); color:#fff;
             font-size:12px; padding:3px 8px; border-radius:999px; backdrop-filter: blur(2px); }
   .check { position:absolute; top:10px; right:10px; width:30px; height:30px; border-radius:50%;
@@ -98,6 +104,27 @@ async function load(){
   root.innerHTML =
     section('Been — rank & add', q.been, true) +
     section('Want to try', q.want_to_try, false);
+  initGalleries();
+}
+
+/* ---- swipeable photo galleries ---- */
+function initGalleries(){
+  document.querySelectorAll('.thumb').forEach(thumb => {
+    const g = thumb.querySelector('.gallery');
+    const dots = thumb.querySelector('.dots');
+    if(!g || !dots) return;
+    g.addEventListener('scroll', () => {
+      const i = Math.round(g.scrollLeft / g.clientWidth);
+      [...dots.children].forEach((d, idx) => d.classList.toggle('on', idx === i));
+    }, {passive:true});
+  });
+}
+function slideErr(img){
+  const thumb = img.closest('.thumb');
+  img.closest('.slide')?.remove();
+  const g = thumb.querySelector('.gallery');
+  if(g && !g.children.length){ thumb.classList.add('noimg'); thumb.querySelector('.dots')?.remove(); }
+  else if(g && g.children.length <= 1){ thumb.querySelector('.dots')?.remove(); }
 }
 
 function section(title, items, isBeen){
@@ -114,15 +141,20 @@ function card(it, isBeen){
   let h = `<div class="card" data-id="${esc(id)}">`;
 
   if(isBeen){
-    const img = it.photo_ref
-      ? `<img loading="lazy" src="/api/photo/${encodeURIComponent(it.photo_ref)}" onerror="this.closest('.thumb').classList.add('noimg')">`
-      : '';
-    const cls = it.photo_ref ? 'thumb' : 'thumb noimg';
+    const refs = (it.photo_refs && it.photo_refs.length) ? it.photo_refs : (it.photo_ref ? [it.photo_ref] : []);
+    const cls = refs.length ? 'thumb' : 'thumb noimg';
+    const slides = refs.map((r, i) =>
+      `<div class="slide"><img ${i ? 'loading="lazy"' : ''} src="/api/photo/${encodeURIComponent(r)}" onerror="slideErr(this)"></div>`
+    ).join('');
+    const dots = refs.length > 1
+      ? `<div class="dots">${refs.map((_, i) => `<i class="${i === 0 ? 'on' : ''}"></i>`).join('')}</div>` : '';
     const checkbox = (!ambiguous && id)
       ? `<label class="check"><input type="checkbox" onchange="toggleSel('${arg(id)}', this)"></label>` : '';
-    h += `<div class="${cls}">${img}
+    h += `<div class="${cls}">
+            <div class="gallery">${slides}</div>
             ${it.photo_count ? `<span class="pcount">${it.photo_count} photo${it.photo_count>1?'s':''}</span>` : ''}
             ${checkbox}
+            ${dots}
           </div>`;
   }
 
