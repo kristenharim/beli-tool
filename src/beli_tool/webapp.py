@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Response
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 from beli_tool.ledger import Ledger
@@ -36,6 +36,7 @@ def _serialize(m: MatchedPlace) -> dict:
         "status": m.status,
         "visit_date": vd,
         "photo_count": m.raw.photo_count,
+        "photo_ref": m.raw.photo_ref,
         "candidates": [
             {"place_id": c.place_id, "name": c.name, "address": c.address}
             for c in m.candidates
@@ -54,12 +55,21 @@ def _visible(items: list[MatchedPlace], handled: set[str]) -> list[dict]:
     return out
 
 
-def create_app(queue: Queue, ledger: Ledger) -> FastAPI:
+def create_app(queue: Queue, ledger: Ledger, photo_resolver=None) -> FastAPI:
+    """photo_resolver: optional callable (uuid -> filesystem path | None) used to
+    serve a card's photo thumbnail at /api/photo/{uuid}."""
     app = FastAPI()
 
     @app.get("/", response_class=HTMLResponse)
     def index() -> str:
         return _INDEX
+
+    @app.get("/api/photo/{uuid}")
+    def photo(uuid: str):
+        path = photo_resolver(uuid) if photo_resolver else None
+        if not path:
+            return Response(status_code=404)
+        return FileResponse(path)
 
     @app.get("/api/queue")
     def get_queue() -> dict:

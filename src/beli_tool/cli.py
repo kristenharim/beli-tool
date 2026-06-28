@@ -66,7 +66,8 @@ def build_app_from_config(cfg: Config, photo_source=None, client=None) -> tuple[
         f"{len(queue.review)} unmatched.",
         flush=True,
     )
-    return create_app(queue, ledger), ledger
+    photo_resolver = getattr(photo_source, "thumbnail_path", None)
+    return create_app(queue, ledger, photo_resolver=photo_resolver), ledger
 
 
 def main(argv: list[str] | None = None) -> None:
