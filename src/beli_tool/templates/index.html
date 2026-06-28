@@ -52,9 +52,11 @@
                     border-radius:12px; background:#fff; cursor:pointer; }
   .ratings button.sel { border-color:var(--accent); background:#eef3fe; transform: scale(1.03); }
   .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-  .actions button { flex:1; min-width:96px; font-size:15px; padding:11px 10px; border:1px solid var(--line);
-                    border-radius:12px; background:#fff; cursor:pointer; font-weight:500; }
-  .actions .primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .actions button, .actions a { flex:1; min-width:96px; font-size:15px; padding:11px 10px; border:1px solid var(--line);
+                    border-radius:12px; background:#fff; cursor:pointer; font-weight:500;
+                    text-decoration:none; color:#111; display:flex; align-items:center; justify-content:center; }
+  .actions .openbeli { flex:1 1 100%; background:var(--accent); color:#fff; border-color:var(--accent); }
+  .actions .primary { background:#177a45; color:#fff; border-color:#177a45; }
   .actions .ghost { color:var(--muted); }
 
   #selbar { position: sticky; bottom: 0; z-index:6; display:none; gap:10px; align-items:center;
@@ -177,7 +179,7 @@ function card(it, isBeen){
       h += '</div>';
     }
     h += `<div class="actions">
-            <button onclick="copyName('${arg(it.name)}', this)">Copy name</button>
+            <a class="openbeli" href="https://beli.app.link/" onclick="copyName('${arg(it.name)}')">Copy name &amp; open Beli</a>
             <button class="primary" onclick="added('${arg(id)}','${arg(it.name)}','${it.bucket}', ratingFor(this))">Added ✓</button>
             <button class="ghost" onclick="skip('${arg(id)}')">Skip</button>
           </div>`;
@@ -238,9 +240,12 @@ function copyName(name, btn){
       document.body.removeChild(el);
     } catch(e){ ok = false; }
   }
-  const o = btn.dataset.label || btn.textContent; btn.dataset.label = o;
-  btn.textContent = ok ? 'Copied ✓ — paste in Beli' : 'Long-press name to copy';
-  setTimeout(()=>{ btn.textContent = o; }, 1800);
+  if(btn){
+    const o = btn.dataset.label || btn.textContent; btn.dataset.label = o;
+    btn.textContent = ok ? 'Copied ✓ — paste in Beli' : 'Long-press name to copy';
+    setTimeout(()=>{ btn.textContent = o; }, 1800);
+  }
+  return ok;
 }
 
 async function added(place_id, name, bucket, rating){
