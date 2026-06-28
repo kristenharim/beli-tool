@@ -11,6 +11,7 @@
   .muted { color: #777; font-size: 14px; }
   button { font-size: 16px; padding: 10px 14px; margin: 4px 4px 0 0; border-radius: 8px; border: 1px solid #ccc; background: #fff; }
   .added { background: #e6f1fb; }
+  button[data-rating].sel { background: #e6f1fb; border-color: #3a87f2; }
 </style>
 </head>
 <body>
@@ -46,7 +47,7 @@ function render(id, items, isBeen) {
           inner += `<button data-rating="${val}">${emoji}</button>`;
         }
       }
-      inner += `<button onclick="copyOpen('${(it.name||'').replace(/'/g,"")}')">Copy & open Beli</button>`;
+      inner += `<button onclick="copyName('${(it.name||'').replace(/'/g,"")}', this)">Copy name</button>`;
       inner += `<button class="added" onclick="added('${it.place_id}','${(it.name||'').replace(/'/g,"")}','${it.bucket}', currentRating(this))">Added ✓</button>`;
       inner += `<button onclick="skip('${it.place_id}')">Skip</button>`;
     }
@@ -58,7 +59,39 @@ function currentRating(btn){ const r = btn.parentElement.querySelector('[data-ra
 document.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.rating) {
   e.target.parentElement.querySelectorAll('[data-rating]').forEach(b=>b.classList.remove('sel'));
   e.target.classList.add('sel'); } });
-function copyOpen(name){ navigator.clipboard && navigator.clipboard.writeText(name); window.location.href = 'beli://'; }
+function copyName(name, btn){
+  let ok = false;
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(name).catch(()=>{});
+    ok = true;
+  } else {
+    // navigator.clipboard is unavailable over plain http; use the legacy
+    // execCommand path, which works on iOS Safari inside a user gesture.
+    try {
+      const el = document.createElement('textarea');
+      el.value = name;
+      el.readOnly = false;
+      el.contentEditable = true;
+      el.style.position = 'fixed';
+      el.style.left = '-9999px';
+      document.body.appendChild(el);
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      el.setSelectionRange(0, name.length);
+      ok = document.execCommand('copy');
+      document.body.removeChild(el);
+    } catch (e) { ok = false; }
+  }
+  if (btn) {
+    const original = btn.dataset.label || btn.textContent;
+    btn.dataset.label = original;
+    btn.textContent = ok ? 'Copied ✓ — paste in Beli' : 'Copy failed — long-press to copy';
+    setTimeout(() => { btn.textContent = original; }, 1800);
+  }
+}
 async function added(place_id, name, bucket, rating){
   await fetch('/api/added', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({place_id, name, bucket, rating})}); load();
