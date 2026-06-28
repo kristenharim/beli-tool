@@ -1,4 +1,5 @@
 import httpx
+import pytest
 
 from beli_tool.places_client import PlacesClient
 
@@ -49,3 +50,31 @@ def test_empty_places_returns_empty_list():
         return httpx.Response(200, json={})
 
     assert _client(handler).text_search("nowhere") == []
+
+
+def test_retries_on_429_then_succeeds(monkeypatch):
+    monkeypatch.setattr("beli_tool.places_client.time.sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(429, headers={"Retry-After": "0"}, json={})
+        return httpx.Response(200, json={"places": [
+            {"id": "p1", "displayName": {"text": "Lilia"},
+             "formattedAddress": "x", "types": ["restaurant"]},
+        ]})
+
+    results = _client(handler).text_search("Lilia")
+    assert calls["n"] == 2  # one 429, one success
+    assert results[0]["place_id"] == "p1"
+
+
+def test_raises_after_exhausting_retries(monkeypatch):
+    monkeypatch.setattr("beli_tool.places_client.time.sleep", lambda s: None)
+
+    def handler(request):
+        return httpx.Response(429, json={})
+
+    with pytest.raises(httpx.HTTPStatusError):
+        _client(handler).nearby_food(40.0, -73.0)
