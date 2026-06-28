@@ -13,6 +13,7 @@ class Config:
     api_key: str
     saved_dir: Path
     db_path: Path
+    max_visits: int = 300
 
 
 def load_config(path: str | Path | None = None) -> Config:
@@ -28,4 +29,7 @@ def load_config(path: str | Path | None = None) -> Config:
         )
     saved_dir = Path(data.get("saved_dir", DEFAULT_HOME / "inbox")).expanduser()
     db_path = Path(data.get("db_path", DEFAULT_HOME / "ledger.sqlite")).expanduser()
-    return Config(api_key=api_key, saved_dir=saved_dir, db_path=db_path)
+    max_visits = int(data.get("max_visits", 300))
+    return Config(
+        api_key=api_key, saved_dir=saved_dir, db_path=db_path, max_visits=max_visits
+    )

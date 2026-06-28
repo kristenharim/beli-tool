@@ -19,9 +19,12 @@ def build_queue(
     photo_raws: list[RawPlace],
     client,
     ledger: Ledger,
+    on_progress=None,
 ) -> Queue:
     handled = ledger.handled_ids()
     q = Queue()
+    total = len(maps_places) + len(photo_raws)
+    done = 0
 
     for raw in maps_places:
         m = match_maps_place(raw, client)
@@ -29,17 +32,23 @@ def build_queue(
             q.review.append(m)
         # match_maps_place only returns confident|no_match (never ambiguous), so gating dedupe here is safe.
         elif m.match and m.match.place_id in handled:
-            continue
+            pass  # already handled — skip, but still count toward progress
         else:
             q.want_to_try.append(m)
+        done += 1
+        if on_progress:
+            on_progress(done, total)
 
     for raw in photo_raws:
         m = match_photo_cluster(raw, client)
         if m.status == "no_match":
             q.review.append(m)
         elif m.status == "confident" and m.match and m.match.place_id in handled:
-            continue
+            pass  # already handled — skip, but still count toward progress
         else:
             q.been.append(m)
+        done += 1
+        if on_progress:
+            on_progress(done, total)
 
     return q

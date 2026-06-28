@@ -36,3 +36,13 @@ def test_load_config_expands_tilde_paths(tmp_path, monkeypatch):
     assert cfg.saved_dir == Path("~/beli-tool/inbox").expanduser()
     assert cfg.db_path == Path("~/x.sqlite").expanduser()
     assert "~" not in str(cfg.saved_dir)
+
+
+def test_load_config_max_visits_default_and_override(tmp_path, monkeypatch):
+    monkeypatch.setenv("BELI_PLACES_KEY", "K")
+    default = tmp_path / "a.toml"
+    default.write_text('saved_dir = "/tmp/x"\n')
+    assert load_config(default).max_visits == 300
+    override = tmp_path / "b.toml"
+    override.write_text('saved_dir = "/tmp/x"\nmax_visits = 50\n')
+    assert load_config(override).max_visits == 50
