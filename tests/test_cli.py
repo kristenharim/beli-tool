@@ -26,3 +26,35 @@ def test_build_app_from_config_wires_sources(tmp_path):
     from fastapi.testclient import TestClient
     data = TestClient(app).get("/api/queue").json()
     assert [i["name"] for i in data["want_to_try"]] == ["Dhamaka"]
+
+
+class ThreeVisitSource:
+    """Three GPS points far apart in space and a month apart in time → 3 visits."""
+
+    def points(self):
+        from datetime import datetime
+        from beli_tool.clustering import PhotoPoint
+        return [
+            PhotoPoint("a", 40.0, -73.0, datetime(2026, 1, 1, 12, 0)),
+            PhotoPoint("b", 41.0, -74.0, datetime(2026, 2, 1, 12, 0)),
+            PhotoPoint("c", 42.0, -75.0, datetime(2026, 3, 1, 12, 0)),
+        ]
+
+
+class AnyFoodClient:
+    def text_search(self, query):
+        return []
+
+    def nearby_food(self, lat, lon, radius_m=60):
+        return [{"place_id": f"{lat},{lon}", "name": "R", "vicinity": "x",
+                 "types": ["restaurant"],
+                 "geometry": {"location": {"lat": lat, "lng": lon}}}]
+
+
+def test_build_app_caps_visits_to_max(tmp_path):
+    cfg = Config(api_key="k", saved_dir=tmp_path, db_path=tmp_path / "l.sqlite", max_visits=1)
+    app, _ = build_app_from_config(cfg, photo_source=ThreeVisitSource(), client=AnyFoodClient())
+    from fastapi.testclient import TestClient
+    data = TestClient(app).get("/api/queue").json()
+    # 3 visits exist but the cap keeps only the single most-recent one
+    assert len(data["been"]) == 1

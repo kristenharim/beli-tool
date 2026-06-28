@@ -28,3 +28,13 @@ def test_build_queue_sorts_and_dedupes():
     q2 = build_queue(maps, photos, FakeClient(), led)
     assert q2.been == []
     assert [m.match.name for m in q2.want_to_try] == ["Dhamaka"]
+
+
+def test_build_queue_reports_progress_for_every_item():
+    maps = [RawPlace(source="maps", name="Dhamaka")]
+    photos = [RawPlace(source="photos", lat=40.7, lon=-73.9, visit_date=date(2026, 4, 12))]
+    calls = []
+    build_queue(maps, photos, FakeClient(), Ledger(":memory:"),
+                on_progress=lambda done, n: calls.append((done, n)))
+    assert len(calls) == 2  # one per place, across both buckets
+    assert calls[-1] == (2, 2)

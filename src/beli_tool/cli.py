@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 import sys
+from datetime import date
 
 import uvicorn
 from fastapi import FastAPI
@@ -31,9 +32,40 @@ def build_app_from_config(cfg: Config, photo_source=None, client=None) -> tuple[
     photo_source = photo_source or OsxPhotosSource()
     client = client or PlacesClient(cfg.api_key)
     ledger = Ledger(cfg.db_path)
+
+    print("Reading Google Maps saved lists…", flush=True)
     maps_places = collect_maps(cfg.saved_dir)
+    print(f"  {len(maps_places)} saved place(s) found.", flush=True)
+
+    print("Reading Apple Photos library for GPS-tagged photos…", flush=True)
     photo_raws = collect_photos(photo_source)
-    queue = build_queue(maps_places, photo_raws, client, ledger)
+    print(f"  {len(photo_raws)} photo visit(s) found.", flush=True)
+
+    if cfg.max_visits and len(photo_raws) > cfg.max_visits:
+        photo_raws.sort(key=lambda r: r.visit_date or date.min, reverse=True)
+        skipped = len(photo_raws) - cfg.max_visits
+        photo_raws = photo_raws[: cfg.max_visits]
+        print(
+            f"  Capping at the {cfg.max_visits} most recent visits "
+            f"({skipped} older skipped — raise max_visits in config.toml to include them).",
+            flush=True,
+        )
+
+    total = len(maps_places) + len(photo_raws)
+    print(f"Matching {total} place(s) with Google Places…", flush=True)
+    queue = build_queue(
+        maps_places,
+        photo_raws,
+        client,
+        ledger,
+        on_progress=lambda done, n: print(f"\r  {done}/{n}", end="", flush=True),
+    )
+    print(flush=True)
+    print(
+        f"Ready: {len(queue.want_to_try)} to try, {len(queue.been)} been, "
+        f"{len(queue.review)} unmatched.",
+        flush=True,
+    )
     return create_app(queue, ledger), ledger
 
 
