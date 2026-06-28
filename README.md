@@ -3,12 +3,13 @@
 Aggregates Google Maps saved lists (→ Want to Try) and GPS-stamped photos
 (→ Been) into a phone-friendly worklist for fast manual entry into Beli.
 Matching uses each photo's embedded GPS coordinate (not image content) via the
-Google Places API. A local SQLite ledger keeps it incremental — each run shows
-only places you haven't handled yet.
+Google Places API (New). A local SQLite ledger keeps it incremental — each run
+shows only places you haven't handled yet.
 
 ## One-time setup
 
-1. Create a free Google Places API key (Maps Platform → Places API).
+1. In Google Cloud Console, enable **Places API (New)** and create an API key
+   (Maps Platform → Keys & Credentials). The free tier is plenty for personal use.
 2. `cp config.example.toml ~/beli-tool/config.toml` and paste your key.
 3. `python3 -m venv .venv && . .venv/bin/activate && pip install -e .`
 4. Grant Photos access when macOS prompts on first run.
