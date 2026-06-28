@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 import httpx
 
 _BASE = "https://places.googleapis.com/v1"
@@ -7,6 +9,8 @@ _TEXT_FIELDS = "places.id,places.displayName,places.formattedAddress,places.type
 _NEARBY_FIELDS = (
     "places.id,places.displayName,places.formattedAddress,places.types,places.location"
 )
+_MAX_RETRIES = 5
+_MAX_BACKOFF_S = 30.0
 
 
 class PlacesClient:
@@ -16,6 +20,10 @@ class PlacesClient:
     shape the matcher consumes: ``place_id``, ``name``, ``formatted_address``,
     ``vicinity``, ``types``, and ``geometry.location.lat/lng``. Keeping that
     contract here means ``matcher.py`` is unaware of the underlying API.
+
+    Transient failures (HTTP 429 rate-limit and 5xx) are retried with
+    exponential backoff, honoring a ``Retry-After`` header when present, so a
+    single rate-limit blip during a large run doesn't abort the whole pipeline.
     """
 
     def __init__(self, api_key: str, client: httpx.Client | None = None):
@@ -29,20 +37,25 @@ class PlacesClient:
             "Content-Type": "application/json",
         }
 
+    def _post(self, path: str, field_mask: str, body: dict) -> list[dict]:
+        url = f"{_BASE}/{path}"
+        for attempt in range(_MAX_RETRIES + 1):
+            r = self._http.post(url, headers=self._headers(field_mask), json=body)
+            if (r.status_code == 429 or r.status_code >= 500) and attempt < _MAX_RETRIES:
+                time.sleep(_retry_delay(r, attempt))
+                continue
+            r.raise_for_status()
+            return [_normalize(p) for p in r.json().get("places", [])]
+        raise RuntimeError("unreachable")  # pragma: no cover
+
     def text_search(self, query: str) -> list[dict]:
-        r = self._http.post(
-            f"{_BASE}/places:searchText",
-            headers=self._headers(_TEXT_FIELDS),
-            json={"textQuery": query},
-        )
-        r.raise_for_status()
-        return [_normalize(p) for p in r.json().get("places", [])]
+        return self._post("places:searchText", _TEXT_FIELDS, {"textQuery": query})
 
     def nearby_food(self, lat: float, lon: float, radius_m: int = 60) -> list[dict]:
-        r = self._http.post(
-            f"{_BASE}/places:searchNearby",
-            headers=self._headers(_NEARBY_FIELDS),
-            json={
+        return self._post(
+            "places:searchNearby",
+            _NEARBY_FIELDS,
+            {
                 "includedTypes": ["restaurant"],
                 "maxResultCount": 20,
                 "locationRestriction": {
@@ -53,8 +66,17 @@ class PlacesClient:
                 },
             },
         )
-        r.raise_for_status()
-        return [_normalize(p) for p in r.json().get("places", [])]
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    """Backoff before a retry: honor Retry-After, else exponential (capped)."""
+    retry_after = response.headers.get("Retry-After")
+    if retry_after:
+        try:
+            return min(float(retry_after), _MAX_BACKOFF_S)
+        except ValueError:
+            pass
+    return min(2.0**attempt, _MAX_BACKOFF_S)
 
 
 def _normalize(p: dict) -> dict:
