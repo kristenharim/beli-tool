@@ -2,7 +2,9 @@
 __pycache__/
 *.pyc
 inbox/
+config.toml
 config.local.*
+Beli-Staging.zip
 *.sqlite
 *.sqlite3
 .DS_Store

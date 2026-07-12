@@ -1,0 +1,41 @@
+name: Build & release .app
+
+# Push a version tag (e.g. `git tag v0.1.0 && git push --tags`) to build the
+# .app on a macOS runner and attach it to a GitHub Release. The download page
+# links to releases/latest/download/Beli-Staging.zip, so the URL never changes.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install . pyinstaller
+
+      - name: Build .app
+        run: pyinstaller beli-tool.spec --noconfirm
+
+      - name: Zip bundle
+        run: |
+          cd dist
+          ditto -c -k --keepParent "Beli Staging.app" ../Beli-Staging.zip
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Beli-Staging.zip
+          fail_on_unmatched_files: true

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beli Staging — download</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.6 -apple-system, system-ui, sans-serif; max-width: 34rem;
+         margin: 4rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.9rem; margin-bottom: .25rem; }
+  .sub { color: #888; margin-top: 0; }
+  a.dl { display: inline-block; margin: 1.5rem 0; padding: .8rem 1.4rem;
+         background: #e63946; color: #fff; text-decoration: none; border-radius: 10px;
+         font-weight: 600; }
+  ol { padding-left: 1.2rem; }
+  code { background: rgba(128,128,128,.18); padding: .1em .4em; border-radius: 5px; }
+  .note { font-size: .9rem; color: #888; border-top: 1px solid rgba(128,128,128,.25);
+          margin-top: 2.5rem; padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <h1>🍽️ Beli Staging</h1>
+  <p class="sub">Turn your Google Maps saved lists + geotagged photos into a phone worklist for Beli.</p>
+
+  <a class="dl" href="https://github.com/kristenharim/beli-tool/releases/latest/download/Beli-Staging.zip">Download for macOS</a>
+
+  <h2>Setup (once)</h2>
+  <ol>
+    <li>Unzip and drag <strong>Beli Staging.app</strong> to Applications.</li>
+    <li>First launch: <strong>right-click → Open</strong> (it's unsigned, so a normal double-click is blocked once).</li>
+    <li>Create <code>~/beli-tool/config.toml</code> with your Google Places API key:
+      <br><code>google_places_api_key = "YOUR_KEY"</code></li>
+    <li>Drop a Google Takeout <em>“Maps (your places)”</em> export into <code>~/beli-tool/inbox/</code>.</li>
+  </ol>
+
+  <h2>Each run</h2>
+  <ol>
+    <li>Double-click the app. It reads your photos + saved places (~a minute).</li>
+    <li>A dialog shows a <code>http://…:8000</code> URL — open it on your phone.</li>
+    <li>Rank each place and tap it into Beli. Quit the app when done.</li>
+  </ol>
+
+  <p class="note">Open source at
+    <a href="https://github.com/kristenharim/beli-tool">github.com/kristenharim/beli-tool</a>.
+    Unsigned build — macOS will ask you to confirm on first open.</p>
+</body>
+</html>

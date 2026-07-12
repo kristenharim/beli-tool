@@ -6,13 +6,27 @@ Matching uses each photo's embedded GPS coordinate (not image content) via the
 Google Places API (New). A local SQLite ledger keeps it incremental — each run
 shows only places you haven't handled yet.
 
+## Install
+
+**As an app (no terminal):** download from the
+[release page](https://kristenharim.github.io/beli-tool/), unzip, and drag
+**Beli Staging.app** to Applications. First launch: right-click → Open (it's
+unsigned). Double-clicking it runs the same thing as `beli-tool run` below and
+shows the phone URL in a dialog.
+
+**From source:** `python3 -m venv .venv && . .venv/bin/activate && pip install -e .`
+
 ## One-time setup
 
 1. In Google Cloud Console, enable **Places API (New)** and create an API key
    (Maps Platform → Keys & Credentials). The free tier is plenty for personal use.
 2. `cp config.example.toml ~/beli-tool/config.toml` and paste your key.
-3. `python3 -m venv .venv && . .venv/bin/activate && pip install -e .`
-4. Grant Photos access when macOS prompts on first run.
+3. Grant Photos access when macOS prompts on first run.
+
+## Building the .app yourself
+
+`pip install pyinstaller && pyinstaller beli-tool.spec --noconfirm` → `dist/Beli Staging.app`.
+Pushing a `v*` tag builds and publishes it via GitHub Actions (`.github/workflows/release.yml`).
 
 ## Each run
 
