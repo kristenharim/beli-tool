@@ -23,6 +23,10 @@ shows the phone URL in a dialog.
 
 ## One-time setup
 
+**→ [SETUP.md](SETUP.md)** walks the whole thing: the Gatekeeper first-open, the
+Full Disk Access grant (no prompt — you add it by hand), the Places API key and
+billing, the Takeout export, and a troubleshooting table.
+
 First run creates `~/Library/Application Support/beli-tool/` with a template
 `config.toml` and an `inbox/` folder, then tells you to add your key.
 
@@ -30,14 +34,6 @@ First run creates `~/Library/Application Support/beli-tool/` with a template
 > `~/Library/Application Support/beli-tool/`. Copy your old `config.toml` and
 > `ledger.sqlite` in, or just paste your key into the new template — you'll only
 > lose the record of which places you'd already handled.
-
-1. In Google Cloud Console, enable **Places API (New)** and create an API key
-   (Maps Platform → Keys & Credentials). The free tier is plenty for personal use.
-2. Paste your key into `~/Library/Application Support/beli-tool/config.toml`.
-3. **Grant Full Disk Access** to Beli Staging.app (or your terminal, if running
-   from source): System Settings → Privacy & Security → Full Disk Access. This is
-   required to read the Photos library and has **no automatic prompt** — you add
-   the app by hand. Without it the app can't see your photos.
 
 ## Building the .app yourself
 
@@ -53,5 +49,8 @@ Pushing a `v*` tag builds and publishes it via GitHub Actions (`.github/workflow
    The token in the URL keeps others on the network out; open the whole URL.
 4. Rank each Been place (😍/😐/😞), tap "Copy & open Beli", paste, add, then
    tap "Added ✓". Tap through Want to Try the same way.
+
+**Rescan** (top right) re-reads photos and CSVs in place — no need to quit and
+reopen after dropping in a new export. Cached lookups make it cheap.
 
 The final tap into Beli is manual by design (Beli has no import/API).

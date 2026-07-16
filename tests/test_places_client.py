@@ -2,7 +2,7 @@ import httpx
 import pytest
 
 from beli_tool.places_cache import PlacesCache
-from beli_tool.places_client import PlacesClient
+from beli_tool.places_client import PlacesClient, PlacesError
 
 
 def _client(handler, cache=None):
@@ -80,14 +80,37 @@ def test_retries_on_429_then_succeeds(monkeypatch):
     assert results[0]["place_id"] == "p1"
 
 
-def test_raises_after_exhausting_retries(monkeypatch):
+def test_403_becomes_an_actionable_message_not_a_traceback():
+    def handler(request):
+        return httpx.Response(403, json={"error": {"message": "Places API has not been used in project 123"}})
+
+    with pytest.raises(PlacesError) as e:
+        _client(handler).text_search("Lilia")
+    msg = str(e.value)
+    assert "billing" in msg  # names the usual causes
+    assert "Places API has not been used in project 123" in msg  # and quotes Google
+
+
+def test_429_after_retries_becomes_a_quota_message(monkeypatch):
     monkeypatch.setattr("beli_tool.places_client.time.sleep", lambda s: None)
 
     def handler(request):
         return httpx.Response(429, json={})
 
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(PlacesError) as e:
         _client(handler).nearby_food(40.0, -73.0)
+    assert "quota" in str(e.value)
+
+
+def test_500_still_raises_the_raw_http_error(monkeypatch):
+    # Not a setup mistake — don't dress a server fault up as one.
+    monkeypatch.setattr("beli_tool.places_client.time.sleep", lambda s: None)
+
+    def handler(request):
+        return httpx.Response(503, json={})
+
+    with pytest.raises(httpx.HTTPStatusError):
+        _client(handler).text_search("Lilia")
 
 
 def test_cache_prevents_a_second_billed_call():

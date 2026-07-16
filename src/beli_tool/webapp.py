@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
+from beli_tool import __version__
 from beli_tool.ledger import Ledger
 from beli_tool.models import MatchedPlace
 from beli_tool.pipeline import Queue
+from beli_tool.places_client import PlacesError
 
 _INDEX = (Path(__file__).parent / "templates" / "index.html").read_text()
 
@@ -58,7 +61,9 @@ def _visible(items: list[MatchedPlace], handled: set[str]) -> list[dict]:
     return out
 
 
-def create_app(queue: Queue, ledger: Ledger, photo_resolver=None, token=None) -> FastAPI:
+def create_app(
+    queue: Queue, ledger: Ledger, photo_resolver=None, token=None, rebuild=None
+) -> FastAPI:
     """photo_resolver: optional callable (uuid -> filesystem path | None) used to
     serve a card's photo thumbnail at /api/photo/{uuid}.
 
@@ -66,8 +71,15 @@ def create_app(queue: Queue, ledger: Ledger, photo_resolver=None, token=None) ->
     phone URL) or the ``beli_token`` cookie that opening that URL sets. Guards
     the LAN server so a shared Wi-Fi neighbor can't read photos/location history.
     token=None disables the check (tests, localhost dev).
+
+    rebuild: optional callable returning a fresh Queue, exposed as POST
+    /api/rescan so new photos/CSVs can be picked up without quitting the app.
     """
     app = FastAPI()
+    # The live queue is swapped wholesale by a rescan, so route handlers read
+    # through this holder rather than closing over the original object.
+    state = {"queue": queue}
+    rescan_lock = threading.Lock()
 
     def guard(request: Request) -> None:
         if token is None:
@@ -94,11 +106,30 @@ def create_app(queue: Queue, ledger: Ledger, photo_resolver=None, token=None) ->
     @app.get("/api/queue")
     def get_queue(_=Depends(guard)) -> dict:
         handled = ledger.handled_ids()
+        q = state["queue"]
         return {
-            "want_to_try": _visible(queue.want_to_try, handled),
-            "been": _visible(queue.been, handled),
-            "review": _visible(queue.review, handled),
+            "version": __version__,
+            "can_rescan": rebuild is not None,
+            "want_to_try": _visible(q.want_to_try, handled),
+            "been": _visible(q.been, handled),
+            "review": _visible(q.review, handled),
         }
+
+    @app.post("/api/rescan")
+    def rescan(_=Depends(guard)) -> dict:
+        if rebuild is None:
+            raise HTTPException(status_code=501, detail="rescan unavailable")
+        # Non-blocking: a double-tap must not run two scans at once — they'd
+        # race on the shared photo source's uuid index.
+        if not rescan_lock.acquire(blocking=False):
+            raise HTTPException(status_code=409, detail="a rescan is already running")
+        try:
+            state["queue"] = rebuild()
+        except PlacesError as e:
+            raise HTTPException(status_code=502, detail=str(e))
+        finally:
+            rescan_lock.release()
+        return {"ok": True}
 
     @app.post("/api/added")
     def added(req: AddedReq, _=Depends(guard)) -> dict:

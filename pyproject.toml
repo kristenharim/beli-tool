@@ -1,6 +1,6 @@
 [project]
 name = "beli-tool"
-version = "0.2.0"
+dynamic = ["version"]  # read from beli_tool.__version__ — bump it there only
 requires-python = ">=3.11"
 dependencies = [
   "osxphotos>=0.68",
@@ -19,6 +19,9 @@ beli-tool = "beli_tool.cli:main"
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "beli_tool.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

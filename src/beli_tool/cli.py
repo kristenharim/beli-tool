@@ -13,9 +13,9 @@ from beli_tool.ledger import Ledger
 from beli_tool.maps_collector import collect_maps
 from beli_tool.photos_collector import collect_photos
 from beli_tool.photos_source import OsxPhotosSource
-from beli_tool.pipeline import build_queue
+from beli_tool.pipeline import Queue, build_queue
 from beli_tool.places_cache import PlacesCache
-from beli_tool.places_client import PlacesClient
+from beli_tool.places_client import PlacesClient, PlacesError
 from beli_tool.webapp import create_app
 
 
@@ -30,16 +30,10 @@ def local_ip() -> str:
         s.close()
 
 
-def build_app_from_config(
-    cfg: Config, photo_source=None, client=None, token=None
-) -> tuple[FastAPI, Ledger]:
-    photo_source = photo_source or OsxPhotosSource(
-        since=cfg.since,
-        on_progress=lambda n: print(f"\r  scanned {n} photos…", end="", flush=True),
-    )
-    client = client or PlacesClient(cfg.api_key, cache=PlacesCache(cfg.db_path))
-    ledger = Ledger(cfg.db_path)
-
+def scan(cfg: Config, photo_source, client, ledger: Ledger) -> Queue:
+    """Collect from both sources and match them. Repeatable: /api/rescan calls
+    this again on the same ledger and cache, so a rescan is cheap and picks up
+    newly-added photos or CSVs without a restart."""
     print("Reading Google Maps saved lists…", flush=True)
     maps_places = collect_maps(cfg.saved_dir)
     print(f"  {len(maps_places)} saved place(s) found.", flush=True)
@@ -77,8 +71,28 @@ def build_app_from_config(
         f"{len(queue.review)} unmatched.",
         flush=True,
     )
+    return queue
+
+
+def build_app_from_config(
+    cfg: Config, photo_source=None, client=None, token=None
+) -> tuple[FastAPI, Ledger]:
+    photo_source = photo_source or OsxPhotosSource(
+        since=cfg.since,
+        on_progress=lambda n: print(f"\r  scanned {n} photos…", end="", flush=True),
+    )
+    client = client or PlacesClient(cfg.api_key, cache=PlacesCache(cfg.db_path))
+    ledger = Ledger(cfg.db_path)
+
+    def rebuild() -> Queue:
+        return scan(cfg, photo_source, client, ledger)
+
+    queue = rebuild()
     photo_resolver = getattr(photo_source, "thumbnail_path", None)
-    return create_app(queue, ledger, photo_resolver=photo_resolver, token=token), ledger
+    app = create_app(
+        queue, ledger, photo_resolver=photo_resolver, token=token, rebuild=rebuild
+    )
+    return app, ledger
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -88,7 +102,11 @@ def main(argv: list[str] | None = None) -> None:
         return
     cfg = load_config()
     token = secrets.token_urlsafe(8)
-    app, _ = build_app_from_config(cfg, token=token)
+    try:
+        app, _ = build_app_from_config(cfg, token=token)
+    except PlacesError as e:  # setup mistake — print the fix, not a traceback
+        print(f"\n{e}\n", file=sys.stderr)
+        raise SystemExit(1)
     port = 8000
     url = f"http://{local_ip()}:{port}/?t={token}"
     print(f"\n  Beli staging ready → open  {url}  on your phone\n")
