@@ -25,5 +25,5 @@ app = BUNDLE(
     coll,
     name="Beli Staging.app",
     bundle_identifier="com.kristenho.beli-tool",
-    info_plist={"LSUIElement": False, "CFBundleShortVersionString": "0.1.0"},
+    info_plist={"LSUIElement": False, "CFBundleShortVersionString": "0.2.0"},
 )

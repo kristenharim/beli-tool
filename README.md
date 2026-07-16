@@ -26,6 +26,11 @@ shows the phone URL in a dialog.
 First run creates `~/Library/Application Support/beli-tool/` with a template
 `config.toml` and an `inbox/` folder, then tells you to add your key.
 
+> **Upgrading from 0.1.0?** Config and ledger moved to
+> `~/Library/Application Support/beli-tool/`. Copy your old `config.toml` and
+> `ledger.sqlite` in, or just paste your key into the new template — you'll only
+> lose the record of which places you'd already handled.
+
 1. In Google Cloud Console, enable **Places API (New)** and create an API key
    (Maps Platform → Keys & Credentials). The free tier is plenty for personal use.
 2. Paste your key into `~/Library/Application Support/beli-tool/config.toml`.
