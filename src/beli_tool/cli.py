@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import secrets
 import socket
 import sys
 from datetime import date
@@ -28,7 +29,9 @@ def local_ip() -> str:
         s.close()
 
 
-def build_app_from_config(cfg: Config, photo_source=None, client=None) -> tuple[FastAPI, Ledger]:
+def build_app_from_config(
+    cfg: Config, photo_source=None, client=None, token=None
+) -> tuple[FastAPI, Ledger]:
     photo_source = photo_source or OsxPhotosSource()
     client = client or PlacesClient(cfg.api_key)
     ledger = Ledger(cfg.db_path)
@@ -67,7 +70,7 @@ def build_app_from_config(cfg: Config, photo_source=None, client=None) -> tuple[
         flush=True,
     )
     photo_resolver = getattr(photo_source, "thumbnail_path", None)
-    return create_app(queue, ledger, photo_resolver=photo_resolver), ledger
+    return create_app(queue, ledger, photo_resolver=photo_resolver, token=token), ledger
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -76,7 +79,9 @@ def main(argv: list[str] | None = None) -> None:
         print("usage: beli-tool run")
         return
     cfg = load_config()
-    app, _ = build_app_from_config(cfg)
+    token = secrets.token_urlsafe(8)
+    app, _ = build_app_from_config(cfg, token=token)
     port = 8000
-    print(f"\n  Beli staging ready → open  http://{local_ip()}:{port}  on your phone\n")
+    url = f"http://{local_ip()}:{port}/?t={token}"
+    print(f"\n  Beli staging ready → open  {url}  on your phone\n")
     uvicorn.run(app, host="0.0.0.0", port=port)

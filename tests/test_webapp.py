@@ -76,6 +76,31 @@ def test_index_serves_html():
     assert "text/html" in r.headers["content-type"]
 
 
+def test_review_items_exposed_with_raw_name():
+    rev = MatchedPlace(
+        bucket="want_to_try", status="no_match",
+        raw=RawPlace(source="maps", name="Prospect Park"),
+    )
+    client = TestClient(create_app(Queue(review=[rev]), Ledger(":memory:")))
+    data = client.get("/api/queue").json()
+    assert data["review"][0]["raw_name"] == "Prospect Park"
+    assert data["review"][0]["name"] is None  # no match, so no resolved name
+
+
+def test_token_guards_every_route():
+    app = create_app(_queue(), Ledger(":memory:"), token="s3cret")
+    # A fresh client (no cookie) with no token is rejected everywhere.
+    assert TestClient(app).get("/api/queue").status_code == 403
+    assert TestClient(app).get("/").status_code == 403
+    assert TestClient(app).get("/", params={"t": "wrong"}).status_code == 403
+    # The right token in the query works, and opening index sets the cookie
+    # so later same-client calls (incl. photo/img loads) pass without ?t=.
+    c = TestClient(app)
+    assert c.get("/", params={"t": "s3cret"}).status_code == 200
+    assert c.get("/api/queue").status_code == 200
+    assert c.post("/api/skip", json={"place_id": "b1"}).status_code == 200
+
+
 def test_ambiguous_item_filtered_when_candidate_handled():
     amb = MatchedPlace(
         bucket="been", status="ambiguous",

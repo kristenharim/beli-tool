@@ -29,6 +29,19 @@ class OsxPhotosSource:
             self._db = osxphotos.PhotosDB()
         return self._db
 
+    def probe(self) -> str | None:
+        """Return None if the Photos library is readable, else an error string.
+
+        osxphotos reads the library's sqlite directly, which macOS gates behind
+        Full Disk Access — and FDA has *no* automatic prompt, so opening the DB
+        just fails. We try it once here; the opened DB is cached for points().
+        """
+        try:
+            self._get_db()
+            return None
+        except Exception as e:  # noqa: BLE001 — any open failure is user-actionable
+            return str(e)
+
     def points(self) -> list[PhotoPoint]:
         db = self._get_db()
         out: list[PhotoPoint] = []

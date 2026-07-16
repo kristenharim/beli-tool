@@ -38,6 +38,26 @@ def test_load_config_expands_tilde_paths(tmp_path, monkeypatch):
     assert "~" not in str(cfg.saved_dir)
 
 
+def test_load_config_seeds_template_on_default_path(tmp_path, monkeypatch):
+    monkeypatch.delenv("BELI_PLACES_KEY", raising=False)
+    monkeypatch.setattr("beli_tool.config.DEFAULT_HOME", tmp_path / "home")
+    # No key yet, so it still raises — but it must have created a usable home.
+    with pytest.raises(RuntimeError):
+        load_config()
+    seeded = tmp_path / "home" / "config.toml"
+    assert seeded.exists()
+    assert "PASTE_YOUR_KEY_HERE" in seeded.read_text()
+    assert (tmp_path / "home" / "inbox").is_dir()
+
+
+def test_load_config_placeholder_key_still_raises(tmp_path, monkeypatch):
+    monkeypatch.delenv("BELI_PLACES_KEY", raising=False)
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('google_places_api_key = "PASTE_YOUR_KEY_HERE"\n')
+    with pytest.raises(RuntimeError):
+        load_config(cfg_file)
+
+
 def test_load_config_max_visits_default_and_override(tmp_path, monkeypatch):
     monkeypatch.setenv("BELI_PLACES_KEY", "K")
     default = tmp_path / "a.toml"
