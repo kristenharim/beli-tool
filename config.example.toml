@@ -4,3 +4,6 @@ db_path = "~/Library/Application Support/beli-tool/ledger.sqlite"
 # Cap on how many photo "visits" (most recent first) to match per run.
 # Each visit costs one Google Places lookup; raise this to process more backlog.
 max_visits = 300
+# Ignore photos taken before this date. Keeps the library scan bounded —
+# without it every run walks your entire Photos history.
+# since = "2024-01-01"

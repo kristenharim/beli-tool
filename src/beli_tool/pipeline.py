@@ -30,10 +30,11 @@ def build_queue(
         m = match_maps_place(raw, client)
         if m.status == "no_match":
             q.review.append(m)
-        # match_maps_place only returns confident|no_match (never ambiguous), so gating dedupe here is safe.
-        elif m.match and m.match.place_id in handled:
+        elif m.status == "confident" and m.match and m.match.place_id in handled:
             pass  # already handled — skip, but still count toward progress
         else:
+            # confident-and-unhandled, or ambiguous — the latter has no .match
+            # to dedupe on, so webapp._visible filters it by candidate instead.
             q.want_to_try.append(m)
         done += 1
         if on_progress:

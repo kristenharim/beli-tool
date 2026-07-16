@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -36,6 +37,23 @@ def test_load_config_expands_tilde_paths(tmp_path, monkeypatch):
     assert cfg.saved_dir == Path("~/beli-tool/inbox").expanduser()
     assert cfg.db_path == Path("~/x.sqlite").expanduser()
     assert "~" not in str(cfg.saved_dir)
+
+
+def test_load_config_since_defaults_to_none(tmp_path, monkeypatch):
+    monkeypatch.setenv("BELI_PLACES_KEY", "K")
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('saved_dir = "/tmp/x"\n')
+    assert load_config(cfg_file).since is None
+
+
+def test_load_config_since_accepts_quoted_and_bare_dates(tmp_path, monkeypatch):
+    monkeypatch.setenv("BELI_PLACES_KEY", "K")
+    quoted = tmp_path / "q.toml"
+    quoted.write_text('since = "2024-01-01"\n')
+    assert load_config(quoted).since == date(2024, 1, 1)
+    bare = tmp_path / "b.toml"  # tomllib parses this into a real date object
+    bare.write_text("since = 2024-01-01\n")
+    assert load_config(bare).since == date(2024, 1, 1)
 
 
 def test_load_config_seeds_template_on_default_path(tmp_path, monkeypatch):

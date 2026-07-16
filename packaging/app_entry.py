@@ -68,9 +68,13 @@ def main() -> None:
         dialog(f"Setup needed:\n\n{e}")
         return
 
+    # probe() opens the Photos library, which is the slow part — say so first,
+    # or the app sits silent through it.
+    notify("Opening your Photos library… this can take a minute.")
+
     # Full Disk Access has no system prompt — check before the long scan so a
     # denial becomes a clear instruction, not a silent hang or crash.
-    source = OsxPhotosSource()
+    source = OsxPhotosSource(since=cfg.since)
     if source.probe() is not None:
         dialog(
             "Beli needs Full Disk Access to read your Photos library.\n\n"
@@ -79,7 +83,7 @@ def main() -> None:
         )
         return
 
-    notify("Preparing your worklist… this can take a minute.")
+    notify("Matching your places… almost there.")
     token = secrets.token_urlsafe(8)
     app, _ = build_app_from_config(cfg, photo_source=source, token=token)
     url = f"http://{local_ip()}:{PORT}/?t={token}"

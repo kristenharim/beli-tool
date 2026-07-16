@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import tomllib
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 DEFAULT_HOME = Path.home() / "Library" / "Application Support" / "beli-tool"
@@ -15,6 +16,9 @@ db_path = "{home}/ledger.sqlite"
 # Cap on how many photo "visits" (most recent first) to match per run.
 # Each visit costs one Google Places lookup; raise this to process more backlog.
 max_visits = 300
+# Ignore photos taken before this date. Keeps the library scan bounded —
+# without it every run walks your entire Photos history.
+# since = "2024-01-01"
 """
 
 
@@ -24,6 +28,7 @@ class Config:
     saved_dir: Path
     db_path: Path
     max_visits: int = 300
+    since: date | None = None
 
 
 def _seed_home() -> Path:
@@ -58,6 +63,17 @@ def load_config(path: str | Path | None = None) -> Config:
     saved_dir = Path(data.get("saved_dir", DEFAULT_HOME / "inbox")).expanduser()
     db_path = Path(data.get("db_path", DEFAULT_HOME / "ledger.sqlite")).expanduser()
     max_visits = int(data.get("max_visits", 300))
+    raw_since = data.get("since")
+    # tomllib gives a real date for an unquoted TOML date; accept a quoted
+    # "YYYY-MM-DD" too, since that's the easy thing to type.
+    if isinstance(raw_since, str):
+        since = date.fromisoformat(raw_since)
+    else:
+        since = raw_since
     return Config(
-        api_key=api_key, saved_dir=saved_dir, db_path=db_path, max_visits=max_visits
+        api_key=api_key,
+        saved_dir=saved_dir,
+        db_path=db_path,
+        max_visits=max_visits,
+        since=since,
     )
