@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
@@ -32,6 +32,8 @@ def _serialize(m: MatchedPlace) -> dict:
         "place_id": m.match.place_id if m.match else None,
         "name": m.match.name if m.match else None,
         "address": m.match.address if m.match else None,
+        "raw_name": m.raw.name,  # search string for unmatched cards (match is None)
+        "source": m.raw.source,
         "bucket": m.bucket,
         "status": m.status,
         "visit_date": vd,
@@ -56,24 +58,41 @@ def _visible(items: list[MatchedPlace], handled: set[str]) -> list[dict]:
     return out
 
 
-def create_app(queue: Queue, ledger: Ledger, photo_resolver=None) -> FastAPI:
+def create_app(queue: Queue, ledger: Ledger, photo_resolver=None, token=None) -> FastAPI:
     """photo_resolver: optional callable (uuid -> filesystem path | None) used to
-    serve a card's photo thumbnail at /api/photo/{uuid}."""
+    serve a card's photo thumbnail at /api/photo/{uuid}.
+
+    token: if set, every route requires it — supplied as ``?t=<token>`` (in the
+    phone URL) or the ``beli_token`` cookie that opening that URL sets. Guards
+    the LAN server so a shared Wi-Fi neighbor can't read photos/location history.
+    token=None disables the check (tests, localhost dev).
+    """
     app = FastAPI()
 
+    def guard(request: Request) -> None:
+        if token is None:
+            return
+        supplied = request.query_params.get("t") or request.cookies.get("beli_token")
+        if supplied != token:
+            raise HTTPException(status_code=403, detail="bad or missing token")
+
     @app.get("/", response_class=HTMLResponse)
-    def index() -> str:
-        return _INDEX
+    def index(request: Request):
+        guard(request)  # first load must carry ?t=; then the cookie takes over
+        resp = HTMLResponse(_INDEX)
+        if token is not None:
+            resp.set_cookie("beli_token", token, httponly=True, samesite="lax")
+        return resp
 
     @app.get("/api/photo/{uuid}")
-    def photo(uuid: str):
+    def photo(uuid: str, _=Depends(guard)):
         path = photo_resolver(uuid) if photo_resolver else None
         if not path:
             return Response(status_code=404)
         return FileResponse(path)
 
     @app.get("/api/queue")
-    def get_queue() -> dict:
+    def get_queue(_=Depends(guard)) -> dict:
         handled = ledger.handled_ids()
         return {
             "want_to_try": _visible(queue.want_to_try, handled),
@@ -82,12 +101,12 @@ def create_app(queue: Queue, ledger: Ledger, photo_resolver=None) -> FastAPI:
         }
 
     @app.post("/api/added")
-    def added(req: AddedReq) -> dict:
+    def added(req: AddedReq, _=Depends(guard)) -> dict:
         ledger.mark_added(req.place_id, req.name, req.bucket, req.rating)
         return {"ok": True}
 
     @app.post("/api/skip")
-    def skip(req: SkipReq) -> dict:
+    def skip(req: SkipReq, _=Depends(guard)) -> dict:
         ledger.mark_dismissed(req.place_id, req.name, req.bucket)
         return {"ok": True}
 

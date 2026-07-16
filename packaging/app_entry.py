@@ -6,8 +6,10 @@ and any setup error through native dialogs/notifications instead of a terminal
 """
 from __future__ import annotations
 
+import secrets
 import socket
 import subprocess
+import sys
 import threading
 import time
 import webbrowser
@@ -16,8 +18,16 @@ import uvicorn
 
 from beli_tool.cli import build_app_from_config, local_ip
 from beli_tool.config import load_config
+from beli_tool.photos_source import OsxPhotosSource
 
 PORT = 8000
+
+
+def _app_path() -> str:
+    """Best-effort path to the .app bundle, for the Full Disk Access dialog."""
+    p = sys.executable
+    i = p.find(".app/")
+    return p[: i + 4] if i != -1 else p
 
 
 def _q(text: str) -> str:
@@ -47,7 +57,7 @@ def announce_when_ready(url: str) -> None:
                 break
         except OSError:
             time.sleep(0.5)
-    webbrowser.open(f"http://localhost:{PORT}")  # desktop convenience
+    webbrowser.open(url)  # desktop convenience (carries the ?t= token)
     dialog(f"Beli is running.\n\nOn your phone, open:\n{url}\n\nQuit this app when you're done.")
 
 
@@ -55,12 +65,24 @@ def main() -> None:
     try:
         cfg = load_config()
     except Exception as e:  # missing key / config — tell the user, don't die silently
-        dialog(f"Setup needed:\n\n{e}\n\nEdit ~/beli-tool/config.toml, then reopen.")
+        dialog(f"Setup needed:\n\n{e}")
+        return
+
+    # Full Disk Access has no system prompt — check before the long scan so a
+    # denial becomes a clear instruction, not a silent hang or crash.
+    source = OsxPhotosSource()
+    if source.probe() is not None:
+        dialog(
+            "Beli needs Full Disk Access to read your Photos library.\n\n"
+            "Open System Settings → Privacy & Security → Full Disk Access, turn "
+            f"on:\n{_app_path()}\n\nThen reopen Beli staging."
+        )
         return
 
     notify("Preparing your worklist… this can take a minute.")
-    app, _ = build_app_from_config(cfg)
-    url = f"http://{local_ip()}:{PORT}"
+    token = secrets.token_urlsafe(8)
+    app, _ = build_app_from_config(cfg, photo_source=source, token=token)
+    url = f"http://{local_ip()}:{PORT}/?t={token}"
     threading.Thread(target=announce_when_ready, args=(url,), daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")  # blocks, keeps app alive
 

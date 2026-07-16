@@ -105,7 +105,8 @@ async function load(){
   root.className = '';
   root.innerHTML =
     section('Been — rank & add', q.been, true) +
-    section('Want to try', q.want_to_try, false);
+    section('Want to try', q.want_to_try, false) +
+    reviewSection(q.review);
   initGalleries();
 }
 
@@ -134,6 +135,30 @@ function section(title, items, isBeen){
   if(!items.length){ return html + `<div class="empty">Nothing here right now 🎉</div>`; }
   html += '<div class="grid">';
   for(const it of items) html += card(it, isBeen);
+  return html + '</div>';
+}
+
+/* ---- unmatched pile: places we couldn't map to a restaurant (read-only) ---- */
+function reviewSection(items){
+  if(!items || !items.length) return '';
+  let html = `<h2>Couldn't match (${items.length})</h2>`;
+  html += `<div class="empty" style="text-align:left">These couldn't be matched to a restaurant automatically — add them in Beli by hand.</div>`;
+  html += '<div class="grid">';
+  for(const it of items){
+    const refs = (it.photo_refs && it.photo_refs.length) ? it.photo_refs : (it.photo_ref ? [it.photo_ref] : []);
+    html += `<div class="card">`;
+    if(refs.length){
+      const slides = refs.map((r, i) =>
+        `<div class="slide"><img ${i ? 'loading="lazy"' : ''} src="/api/photo/${encodeURIComponent(r)}" onerror="slideErr(this)"></div>`
+      ).join('');
+      html += `<div class="thumb"><div class="gallery">${slides}</div>${it.photo_count ? `<span class="pcount">${it.photo_count} photo${it.photo_count>1?'s':''}</span>` : ''}</div>`;
+    }
+    html += '<div class="body">';
+    html += `<div class="name">${esc(it.raw_name) || 'Unknown place'}</div>`;
+    if(it.visit_date) html += `<div class="muted">${it.visit_date}</div>`;
+    html += `<div class="muted" style="margin-top:6px">No match found.</div>`;
+    html += '</div></div>';
+  }
   return html + '</div>';
 }
 
