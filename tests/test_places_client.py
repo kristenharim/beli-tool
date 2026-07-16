@@ -1,11 +1,21 @@
 import httpx
 import pytest
 
+from beli_tool.places_cache import PlacesCache
 from beli_tool.places_client import PlacesClient
 
 
-def _client(handler):
-    return PlacesClient("KEY", client=httpx.Client(transport=httpx.MockTransport(handler)))
+def _client(handler, cache=None):
+    return PlacesClient(
+        "KEY", client=httpx.Client(transport=httpx.MockTransport(handler)), cache=cache
+    )
+
+
+def _ok(request):
+    return httpx.Response(200, json={"places": [
+        {"id": "p1", "displayName": {"text": "Lilia"},
+         "formattedAddress": "567 Union Ave", "types": ["restaurant"]},
+    ]})
 
 
 def test_text_search_hits_new_endpoint_and_normalizes():
@@ -78,3 +88,60 @@ def test_raises_after_exhausting_retries(monkeypatch):
 
     with pytest.raises(httpx.HTTPStatusError):
         _client(handler).nearby_food(40.0, -73.0)
+
+
+def test_cache_prevents_a_second_billed_call():
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return _ok(request)
+
+    cache = PlacesCache(":memory:")
+    c1 = _client(handler, cache=cache)
+    assert c1.text_search("Lilia")[0]["place_id"] == "p1"
+    # A fresh client sharing the cache (i.e. the next run) must not re-bill.
+    c2 = _client(handler, cache=cache)
+    assert c2.text_search("Lilia")[0]["place_id"] == "p1"
+    assert calls["n"] == 1
+    assert (c1.calls, c1.hits) == (1, 0)
+    assert (c2.calls, c2.hits) == (0, 1)
+
+
+def test_cache_keys_on_the_exact_request_not_just_the_endpoint():
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return _ok(request)
+
+    c = _client(handler, cache=PlacesCache(":memory:"))
+    c.text_search("Lilia")
+    c.text_search("Dhamaka")  # different query → different key → real call
+    c.text_search("Lilia")  # repeat → hit
+    assert calls["n"] == 2
+    assert (c.calls, c.hits) == (2, 1)
+
+
+def test_cached_empty_result_is_not_re_billed():
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, json={})
+
+    c = _client(handler, cache=PlacesCache(":memory:"))
+    assert c.text_search("nowhere") == []
+    assert c.text_search("nowhere") == []
+    assert calls["n"] == 1  # the no-match case is the one that used to re-bill
+
+
+def test_nearby_and_text_share_a_cache_without_colliding():
+    def handler(request):
+        return _ok(request)
+
+    c = _client(handler, cache=PlacesCache(":memory:"))
+    c.text_search("Lilia")
+    c.nearby_food(40.0, -73.0)
+    assert c.calls == 2  # same cache, different endpoints → no false hit
+    assert c.hits == 0

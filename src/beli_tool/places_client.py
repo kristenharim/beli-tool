@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 
 import httpx
@@ -24,11 +25,19 @@ class PlacesClient:
     Transient failures (HTTP 429 rate-limit and 5xx) are retried with
     exponential backoff, honoring a ``Retry-After`` header when present, so a
     single rate-limit blip during a large run doesn't abort the whole pipeline.
+
+    An optional ``cache`` (see places_cache.PlacesCache) short-circuits repeat
+    requests. It sits at ``_post``, the one chokepoint both endpoints route
+    through, so the key is the exact request and both are covered at once.
+    ``hits``/``calls`` count cache hits vs. billed network calls.
     """
 
-    def __init__(self, api_key: str, client: httpx.Client | None = None):
+    def __init__(self, api_key: str, client: httpx.Client | None = None, cache=None):
         self._key = api_key
         self._http = client or httpx.Client(timeout=15.0)
+        self._cache = cache
+        self.hits = 0
+        self.calls = 0
 
     def _headers(self, field_mask: str) -> dict:
         return {
@@ -38,6 +47,12 @@ class PlacesClient:
         }
 
     def _post(self, path: str, field_mask: str, body: dict) -> list[dict]:
+        key = f"{path}:{json.dumps(body, sort_keys=True)}"
+        if self._cache is not None:
+            cached = self._cache.get(key)
+            if cached is not None:  # note: [] is a real hit, not a miss
+                self.hits += 1
+                return cached
         url = f"{_BASE}/{path}"
         for attempt in range(_MAX_RETRIES + 1):
             r = self._http.post(url, headers=self._headers(field_mask), json=body)
@@ -45,7 +60,11 @@ class PlacesClient:
                 time.sleep(_retry_delay(r, attempt))
                 continue
             r.raise_for_status()
-            return [_normalize(p) for p in r.json().get("places", [])]
+            self.calls += 1
+            places = [_normalize(p) for p in r.json().get("places", [])]
+            if self._cache is not None:
+                self._cache.put(key, places)
+            return places
         raise RuntimeError("unreachable")  # pragma: no cover
 
     def text_search(self, query: str) -> list[dict]:

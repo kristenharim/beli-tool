@@ -186,7 +186,9 @@ function card(it, isBeen){
   }
 
   h += '<div class="body">';
-  h += `<div class="name">${esc(it.name) || '(pick one below)'}</div>`;
+  // Unmatched maps saves have no resolved name — show what she saved, or the
+  // candidate buttons below are a confirmation with nothing to confirm against.
+  h += `<div class="name">${esc(it.name) || esc(it.raw_name) || '(pick one below)'}</div>`;
   if(it.address) h += `<div class="muted">${esc(it.address)}</div>`;
   if(isBeen && it.visit_date) h += `<div class="muted">${it.visit_date}</div>`;
 

@@ -30,6 +30,49 @@ def test_match_maps_no_results():
     assert m.status == "no_match" and m.match is None
 
 
+def test_match_maps_confident_on_partial_name():
+    client = FakeClient(text=[
+        {"place_id": "p1", "name": "Lilia Ristorante", "formatted_address": "567 Union Ave",
+         "types": ["restaurant"]},
+    ])
+    m = match_maps_place(RawPlace(source="maps", name="Lilia"), client)
+    assert m.status == "confident" and m.match.place_id == "p1"
+
+
+def test_match_maps_skips_non_food_top_hit():
+    # A saved park used to come back as a "confident" restaurant match.
+    client = FakeClient(text=[
+        {"place_id": "park", "name": "Prospect Park", "formatted_address": "Brooklyn",
+         "types": ["park", "tourist_attraction"]},
+        {"place_id": "p2", "name": "Prospect Park Cafe", "formatted_address": "Brooklyn",
+         "types": ["cafe", "food"]},
+    ])
+    m = match_maps_place(RawPlace(source="maps", name="Prospect Park"), client)
+    assert m.match.place_id == "p2"  # the first *edible* hit, not results[0]
+
+
+def test_match_maps_no_food_at_all_goes_to_review():
+    client = FakeClient(text=[
+        {"place_id": "park", "name": "Prospect Park", "formatted_address": "Brooklyn",
+         "types": ["park"]},
+    ])
+    m = match_maps_place(RawPlace(source="maps", name="Prospect Park"), client)
+    assert m.status == "no_match" and m.match is None
+
+
+def test_match_maps_unrelated_name_is_ambiguous_not_confident():
+    # Google returned *a* restaurant, but nothing like what she saved — this
+    # used to be silently marked confident.
+    client = FakeClient(text=[
+        {"place_id": "p9", "name": "Joe's Pizza", "formatted_address": "7 Carmine St",
+         "types": ["restaurant"]},
+    ])
+    m = match_maps_place(RawPlace(source="maps", name="Tatiana by Kwame Onwuachi"), client)
+    assert m.status == "ambiguous"
+    assert m.match is None
+    assert [c.place_id for c in m.candidates] == ["p9"]  # confirmable, not lost
+
+
 def test_match_photo_confident_single():
     nearby = [
         {"place_id": "p1", "name": "Lilia", "vicinity": "567 Union Ave",
