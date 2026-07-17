@@ -133,12 +133,24 @@ From a terminal instead: `beli-tool run`.
 | A visit matched the wrong restaurant | Tap Skip. GPS drifts indoors; the nearest food hit isn't always right. |
 | Places under "Couldn't match" | No restaurant found there — a home-cooked meal, a park, a bad GPS fix. |
 
+**Still stuck? Read the log.** Every run appends to
+`~/Library/Application Support/beli-tool/beli-tool.log`: what the config was, how
+many places were found, what you added or skipped, and any error in full. The
+.app is windowed and has no console, so this is the only record of what it did.
+
+```sh
+tail -50 ~/Library/Application\ Support/beli-tool/beli-tool.log
+```
+
+It never contains your API key. It rotates at ~500KB, keeping 2 old copies.
+
 **Where things live** — all under `~/Library/Application Support/beli-tool/`:
 
 - `config.toml` — your key and settings
 - `inbox/` — Takeout CSVs
 - `ledger.sqlite` — what you've handled + the Places cache
 - `ledger.sqlite.bak` — the previous run's copy, made at every startup
+- `beli-tool.log` — what happened, every run
 
 Plus, if `obsidian_log` is set, the vault note you pointed it at.
 

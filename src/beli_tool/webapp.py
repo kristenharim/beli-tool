@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from beli_tool.pipeline import Queue
 from beli_tool.places_client import PlacesError
 
 _INDEX = (Path(__file__).parent / "templates" / "index.html").read_text()
+log = logging.getLogger(__name__)
 
 
 class AddedReq(BaseModel):
@@ -147,10 +149,13 @@ def create_app(
         # Non-blocking: a double-tap must not run two scans at once — they'd
         # race on the shared photo source's uuid index.
         if not rescan_lock.acquire(blocking=False):
+            log.info("rescan rejected: one already running")
             raise HTTPException(status_code=409, detail="a rescan is already running")
         try:
+            log.info("rescan requested")
             state["queue"] = rebuild()
         except PlacesError as e:
+            log.error("rescan failed: %s", e)
             raise HTTPException(status_code=502, detail=str(e))
         finally:
             rescan_lock.release()
@@ -160,16 +165,23 @@ def create_app(
     def added(req: AddedReq, _=Depends(guard)) -> dict:
         # Ledger first: it's the source of truth, the vault note is the mirror.
         ledger.mark_added(req.place_id, req.name, req.bucket, req.rating)
+        log.info(
+            "added: %s (%s) rating=%s id=%s",
+            req.name, req.bucket, req.rating or "-", req.place_id,
+        )
         if obsidian_log is not None:
             address, visit_date = _lookup(state["queue"], req.place_id)
-            obsidian_log.append(
+            if not obsidian_log.append(
                 req.name, req.bucket, req.rating, address=address, visit_date=visit_date
-            )
+            ):
+                # The add itself stands; only the mirror line was lost.
+                log.warning("obsidian log write failed for %s", req.name)
         return {"ok": True}
 
     @app.post("/api/skip")
     def skip(req: SkipReq, _=Depends(guard)) -> dict:
         ledger.mark_dismissed(req.place_id, req.name, req.bucket)
+        log.info("skipped: %s id=%s", req.name or "-", req.place_id)
         return {"ok": True}
 
     return app
