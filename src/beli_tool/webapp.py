@@ -50,6 +50,23 @@ def _serialize(m: MatchedPlace) -> dict:
     }
 
 
+def _lookup(queue: Queue, place_id: str) -> tuple[str, object]:
+    """Find (address, visit_date) for a place_id in the live queue.
+
+    The client only posts place_id/name/bucket/rating, but the log wants the
+    address and visit date — they're already on the server, so read them here
+    rather than widening the request. Ambiguous cards resolve via candidates.
+    """
+    for items in (queue.want_to_try, queue.been, queue.review):
+        for m in items:
+            if m.match and m.match.place_id == place_id:
+                return m.match.address, m.raw.visit_date
+            for c in m.candidates:
+                if c.place_id == place_id:
+                    return c.address, m.raw.visit_date
+    return "", None
+
+
 def _visible(items: list[MatchedPlace], handled: set[str]) -> list[dict]:
     out = []
     for m in items:
@@ -62,7 +79,12 @@ def _visible(items: list[MatchedPlace], handled: set[str]) -> list[dict]:
 
 
 def create_app(
-    queue: Queue, ledger: Ledger, photo_resolver=None, token=None, rebuild=None
+    queue: Queue,
+    ledger: Ledger,
+    photo_resolver=None,
+    token=None,
+    rebuild=None,
+    obsidian_log=None,
 ) -> FastAPI:
     """photo_resolver: optional callable (uuid -> filesystem path | None) used to
     serve a card's photo thumbnail at /api/photo/{uuid}.
@@ -74,6 +96,9 @@ def create_app(
 
     rebuild: optional callable returning a fresh Queue, exposed as POST
     /api/rescan so new photos/CSVs can be picked up without quitting the app.
+
+    obsidian_log: optional ObsidianLog; each added place is mirrored to a vault
+    note. Best-effort — a vault write must never fail the ledger write.
     """
     app = FastAPI()
     # The live queue is swapped wholesale by a rescan, so route handlers read
@@ -133,7 +158,13 @@ def create_app(
 
     @app.post("/api/added")
     def added(req: AddedReq, _=Depends(guard)) -> dict:
+        # Ledger first: it's the source of truth, the vault note is the mirror.
         ledger.mark_added(req.place_id, req.name, req.bucket, req.rating)
+        if obsidian_log is not None:
+            address, visit_date = _lookup(state["queue"], req.place_id)
+            obsidian_log.append(
+                req.name, req.bucket, req.rating, address=address, visit_date=visit_date
+            )
         return {"ok": True}
 
     @app.post("/api/skip")

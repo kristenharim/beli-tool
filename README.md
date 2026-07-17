@@ -9,7 +9,8 @@ the same file, so re-runs don't re-query (or re-pay for) what Google already
 answered.
 
 Set `since` in `config.toml` to bound how far back the Photos scan reaches;
-without it, every run walks your whole library.
+without it, every run walks your whole library. Set `obsidian_log` to mirror
+every add into an Obsidian note as a running history.
 
 ## Install
 

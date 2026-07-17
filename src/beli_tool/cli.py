@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from beli_tool.config import Config, load_config
 from beli_tool.ledger import Ledger
 from beli_tool.maps_collector import collect_maps
+from beli_tool.obsidian_log import ObsidianLog
 from beli_tool.photos_collector import collect_photos
 from beli_tool.photos_source import OsxPhotosSource
 from beli_tool.pipeline import Queue, build_queue
@@ -89,8 +90,16 @@ def build_app_from_config(
 
     queue = rebuild()
     photo_resolver = getattr(photo_source, "thumbnail_path", None)
+    obsidian_log = ObsidianLog(cfg.obsidian_log) if cfg.obsidian_log else None
+    if obsidian_log:
+        print(f"  Mirroring adds to {cfg.obsidian_log}", flush=True)
     app = create_app(
-        queue, ledger, photo_resolver=photo_resolver, token=token, rebuild=rebuild
+        queue,
+        ledger,
+        photo_resolver=photo_resolver,
+        token=token,
+        rebuild=rebuild,
+        obsidian_log=obsidian_log,
     )
     return app, ledger
 

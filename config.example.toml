@@ -7,3 +7,6 @@ max_visits = 300
 # Ignore photos taken before this date. Keeps the library scan bounded —
 # without it every run walks your entire Photos history.
 # since = "2024-01-01"
+# Optional: mirror every place you add into an Obsidian note, as a running
+# history. The note is created on first write. Leave unset to skip entirely.
+# obsidian_log = "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/YOUR_VAULT/08-Lookup/beli-log.md"
