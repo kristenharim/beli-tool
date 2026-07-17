@@ -1,12 +1,30 @@
 from __future__ import annotations
 
+import shutil
 import sqlite3
 import threading
 from pathlib import Path
 
 
+def _backup(db_path: str | Path) -> None:
+    """Snapshot the previous run's state to <db>.bak before opening it.
+
+    This file is the entire memory of what's been handled — one bad "skip
+    selected" spree is otherwise unrecoverable.
+    """
+    if str(db_path) == ":memory:":
+        return
+    src = Path(db_path)
+    if src.exists():
+        try:
+            shutil.copy2(src, src.with_suffix(src.suffix + ".bak"))
+        except OSError:
+            pass  # a backup that fails must never block the actual run
+
+
 class Ledger:
     def __init__(self, db_path: str | Path = ":memory:"):
+        _backup(db_path)
         # Invariant: every access to self.conn MUST hold self._lock (check_same_thread=False removes sqlite's own guard).
         self._lock = threading.Lock()
         self.conn = sqlite3.connect(str(db_path), check_same_thread=False)

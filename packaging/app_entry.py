@@ -19,6 +19,7 @@ import uvicorn
 from beli_tool.cli import build_app_from_config, local_ip
 from beli_tool.config import load_config
 from beli_tool.photos_source import OsxPhotosSource
+from beli_tool.places_client import PlacesError
 
 PORT = 8000
 
@@ -85,7 +86,11 @@ def main() -> None:
 
     notify("Matching your places… almost there.")
     token = secrets.token_urlsafe(8)
-    app, _ = build_app_from_config(cfg, photo_source=source, token=token)
+    try:
+        app, _ = build_app_from_config(cfg, photo_source=source, token=token)
+    except PlacesError as e:  # key/billing/quota — show the fix, not a stack trace
+        dialog(str(e))
+        return
     url = f"http://{local_ip()}:{PORT}/?t={token}"
     threading.Thread(target=announce_when_ready, args=(url,), daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")  # blocks, keeps app alive

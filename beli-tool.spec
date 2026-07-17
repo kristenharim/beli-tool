@@ -1,6 +1,13 @@
 # PyInstaller spec — builds "Beli Staging.app", a double-click launcher.
 # osxphotos is heavy (pyobjc + data files), so collect it wholesale.
+import re
+
 from PyInstaller.utils.hooks import collect_all, collect_submodules
+
+# Parsed, not imported: beli_tool pulls in heavy deps that needn't load here.
+VERSION = re.search(
+    r'__version__ = "([^"]+)"', open("src/beli_tool/__init__.py").read()
+).group(1)
 
 datas, binaries, hiddenimports = collect_all("osxphotos")
 hiddenimports += collect_submodules("uvicorn") + collect_submodules("photoscript")
@@ -25,5 +32,5 @@ app = BUNDLE(
     coll,
     name="Beli Staging.app",
     bundle_identifier="com.kristenho.beli-tool",
-    info_plist={"LSUIElement": False, "CFBundleShortVersionString": "0.2.0"},
+    info_plist={"LSUIElement": False, "CFBundleShortVersionString": VERSION},
 )

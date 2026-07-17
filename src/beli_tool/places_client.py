@@ -14,6 +14,15 @@ _MAX_RETRIES = 5
 _MAX_BACKOFF_S = 30.0
 
 
+class PlacesError(RuntimeError):
+    """A Places failure with a human-actionable message.
+
+    The common setup mistakes (key typo'd, billing not enabled, Places API (New)
+    not switched on, quota blown) all come back as bare HTTP codes. Raised as a
+    plain traceback they read as a crash; the callers show this message instead.
+    """
+
+
 class PlacesClient:
     """Adapter over Google Places API (New).
 
@@ -59,6 +68,7 @@ class PlacesClient:
             if (r.status_code == 429 or r.status_code >= 500) and attempt < _MAX_RETRIES:
                 time.sleep(_retry_delay(r, attempt))
                 continue
+            _raise_if_actionable(r)
             r.raise_for_status()
             self.calls += 1
             places = [_normalize(p) for p in r.json().get("places", [])]
@@ -85,6 +95,32 @@ class PlacesClient:
                 },
             },
         )
+
+
+def _google_message(response: httpx.Response) -> str:
+    try:
+        return (response.json().get("error") or {}).get("message", "")
+    except ValueError:
+        return ""
+
+
+def _raise_if_actionable(response: httpx.Response) -> None:
+    """Turn the setup-mistake status codes into instructions, not tracebacks."""
+    if response.status_code not in (400, 401, 403, 429):
+        return
+    detail = _google_message(response)
+    tail = f"\n\nGoogle said: {detail}" if detail else ""
+    if response.status_code == 429:
+        raise PlacesError(
+            "Google Places is rate-limiting or you're out of quota. Check the "
+            "quota page for your project, or try again later." + tail
+        )
+    raise PlacesError(
+        f"Google rejected the Places request (HTTP {response.status_code}). Usually one of:\n"
+        "  • the API key in config.toml is wrong or restricted\n"
+        "  • billing isn't enabled on the Google Cloud project\n"
+        "  • the 'Places API (New)' isn't enabled for that project" + tail
+    )
 
 
 def _retry_delay(response: httpx.Response, attempt: int) -> float:

@@ -1,9 +1,11 @@
 from datetime import date
 from fastapi.testclient import TestClient
 
+from beli_tool import __version__
 from beli_tool.models import MatchedPlace, PlaceCandidate, RawPlace
 from beli_tool.pipeline import Queue
 from beli_tool.ledger import Ledger
+from beli_tool.places_client import PlacesError
 from beli_tool.webapp import create_app
 
 
@@ -67,6 +69,73 @@ def test_added_marks_handled_and_filters_next_queue():
     assert led.is_handled("b1")
     data = client.get("/api/queue").json()
     assert data["been"] == []  # filtered out after being handled
+
+
+def test_queue_reports_version_and_rescan_availability():
+    client = TestClient(create_app(_queue(), Ledger(":memory:")))
+    data = client.get("/api/queue").json()
+    assert data["version"] == __version__
+    assert data["can_rescan"] is False  # no rebuild wired -> UI hides the button
+
+
+def test_rescan_swaps_in_the_new_queue():
+    fresh = MatchedPlace(
+        bucket="want_to_try", status="confident", raw=RawPlace(source="maps", name="Rezdora"),
+        match=PlaceCandidate(place_id="w2", name="Rezdora", address="27 E 20th", category="restaurant"),
+    )
+    client = TestClient(
+        create_app(_queue(), Ledger(":memory:"), rebuild=lambda: Queue(want_to_try=[fresh]))
+    )
+    assert [i["name"] for i in client.get("/api/queue").json()["want_to_try"]] == ["Dhamaka"]
+    assert client.post("/api/rescan").json() == {"ok": True}
+    assert [i["name"] for i in client.get("/api/queue").json()["want_to_try"]] == ["Rezdora"]
+
+
+def test_rescan_preserves_the_ledger():
+    led = Ledger(":memory:")
+    client = TestClient(create_app(_queue(), led, rebuild=_queue))
+    client.post("/api/added", json={"place_id": "b1", "name": "Lilia", "bucket": "been", "rating": "loved"})
+    client.post("/api/rescan")
+    # The rescan re-finds Lilia, but it stays handled — the point of rescanning
+    # is picking up new places, not re-litigating old ones.
+    assert led.is_handled("b1")
+    assert client.get("/api/queue").json()["been"] == []
+
+
+def test_rescan_501_without_a_rebuild():
+    client = TestClient(create_app(_queue(), Ledger(":memory:")))
+    assert client.post("/api/rescan").status_code == 501
+
+
+def test_rescan_surfaces_places_setup_errors():
+    def boom():
+        raise PlacesError("billing isn't enabled")
+
+    client = TestClient(create_app(_queue(), Ledger(":memory:"), rebuild=boom))
+    r = client.post("/api/rescan")
+    assert r.status_code == 502
+    assert "billing" in r.json()["detail"]
+
+
+def test_rescan_lock_is_released_after_a_failure():
+    calls = {"n": 0}
+
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise PlacesError("transient")
+        return Queue()
+
+    client = TestClient(create_app(_queue(), Ledger(":memory:"), rebuild=flaky))
+    assert client.post("/api/rescan").status_code == 502
+    # A failed rescan must not wedge the lock and 409 forever after.
+    assert client.post("/api/rescan").status_code == 200
+
+
+def test_rescan_requires_the_token():
+    client = TestClient(create_app(_queue(), Ledger(":memory:"), token="s3cret", rebuild=Queue))
+    assert client.post("/api/rescan").status_code == 403
+    assert client.post("/api/rescan?t=s3cret").status_code == 200
 
 
 def test_index_serves_html():
