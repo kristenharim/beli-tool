@@ -19,6 +19,10 @@ max_visits = 300
 # Ignore photos taken before this date. Keeps the library scan bounded —
 # without it every run walks your entire Photos history.
 # since = "2024-01-01"
+# Optional: mirror every place you add into an Obsidian note, as a running
+# history. The note is created on first write. Leave unset to skip entirely.
+# An iCloud vault lives under the path shape below — swap in your vault name.
+# obsidian_log = "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/YOUR_VAULT/08-Lookup/beli-log.md"
 """
 
 
@@ -29,6 +33,7 @@ class Config:
     db_path: Path
     max_visits: int = 300
     since: date | None = None
+    obsidian_log: Path | None = None
 
 
 def _seed_home() -> Path:
@@ -70,10 +75,13 @@ def load_config(path: str | Path | None = None) -> Config:
         since = date.fromisoformat(raw_since)
     else:
         since = raw_since
+    raw_log = data.get("obsidian_log")
+    obsidian_log = Path(raw_log).expanduser() if raw_log else None
     return Config(
         api_key=api_key,
         saved_dir=saved_dir,
         db_path=db_path,
         max_visits=max_visits,
         since=since,
+        obsidian_log=obsidian_log,
     )

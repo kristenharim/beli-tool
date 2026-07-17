@@ -77,6 +77,21 @@ since = "2024-01-01"
 max_visits = 300
 ```
 
+### Optional: mirror adds into Obsidian
+
+Set `obsidian_log` to a note path and every place you tap **Added ✓** on gets
+appended there as a table row — date, place, rating, visit date, address, list.
+The note is created on first write, with the frontmatter and table your vault
+already uses.
+
+```toml
+obsidian_log = "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/YOUR_VAULT/08-Lookup/beli-log.md"
+```
+
+The ledger stays the source of truth; this is the readable copy that outlives it.
+Writes are best-effort — if the vault is missing or mid-sync, the add still
+counts and only the log line is skipped.
+
 ## 5. Export your Google Maps saved lists
 
 1. Go to <https://takeout.google.com/>.
@@ -124,6 +139,8 @@ From a terminal instead: `beli-tool run`.
 - `inbox/` — Takeout CSVs
 - `ledger.sqlite` — what you've handled + the Places cache
 - `ledger.sqlite.bak` — the previous run's copy, made at every startup
+
+Plus, if `obsidian_log` is set, the vault note you pointed it at.
 
 Delete a row from `ledger.sqlite` to make a place show up again. Restore the
 `.bak` if you skip-spree something you wanted.

@@ -71,6 +71,41 @@ def test_added_marks_handled_and_filters_next_queue():
     assert data["been"] == []  # filtered out after being handled
 
 
+class FakeLog:
+    def __init__(self):
+        self.rows = []
+
+    def append(self, name, bucket, rating=None, address="", visit_date=None):
+        self.rows.append((name, bucket, rating, address, visit_date))
+        return True
+
+
+def test_added_mirrors_to_the_obsidian_log_with_server_side_details():
+    log = FakeLog()
+    client = TestClient(create_app(_queue(), Ledger(":memory:"), obsidian_log=log))
+    client.post("/api/added", json={"place_id": "b1", "name": "Lilia", "bucket": "been", "rating": "loved"})
+    # Address and visit date come from the queue, not the client's request.
+    assert log.rows == [("Lilia", "been", "loved", "567 Union Ave", date(2026, 4, 12))]
+
+
+def test_added_mirrors_an_ambiguous_pick_via_its_candidate():
+    amb = MatchedPlace(
+        bucket="been", status="ambiguous", raw=RawPlace(source="photos", lat=40.7, lon=-73.9),
+        candidates=[PlaceCandidate(place_id="c1", name="Los Tacos", address="75 9th Ave", category="restaurant")],
+    )
+    log = FakeLog()
+    client = TestClient(create_app(Queue(been=[amb]), Ledger(":memory:"), obsidian_log=log))
+    client.post("/api/added", json={"place_id": "c1", "name": "Los Tacos", "bucket": "been", "rating": "fine"})
+    assert log.rows[0][3] == "75 9th Ave"  # resolved from the chosen candidate
+
+
+def test_no_log_configured_is_fine():
+    client = TestClient(create_app(_queue(), Ledger(":memory:")))
+    assert client.post(
+        "/api/added", json={"place_id": "b1", "name": "Lilia", "bucket": "been", "rating": "loved"}
+    ).json() == {"ok": True}
+
+
 def test_queue_reports_version_and_rescan_availability():
     client = TestClient(create_app(_queue(), Ledger(":memory:")))
     data = client.get("/api/queue").json()
