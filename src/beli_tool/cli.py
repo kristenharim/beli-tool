@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 import socket
 import sys
@@ -8,8 +9,10 @@ from datetime import date
 import uvicorn
 from fastapi import FastAPI
 
-from beli_tool.config import Config, load_config
+from beli_tool import __version__
+from beli_tool.config import LOG_PATH, Config, load_config
 from beli_tool.ledger import Ledger
+from beli_tool.logsetup import setup_logging
 from beli_tool.maps_collector import collect_maps
 from beli_tool.obsidian_log import ObsidianLog
 from beli_tool.photos_collector import collect_photos
@@ -18,6 +21,19 @@ from beli_tool.pipeline import Queue, build_queue
 from beli_tool.places_cache import PlacesCache
 from beli_tool.places_client import PlacesClient, PlacesError
 from beli_tool.webapp import create_app
+
+
+log = logging.getLogger(__name__)
+
+
+def describe(cfg: Config) -> str:
+    """One-line config summary for the log. Deliberately never includes
+    api_key — the log is a plain file and the key is the one secret here."""
+    return (
+        f"since={cfg.since} max_visits={cfg.max_visits} "
+        f"saved_dir={cfg.saved_dir} db={cfg.db_path} "
+        f"obsidian_log={'on' if cfg.obsidian_log else 'off'}"
+    )
 
 
 def local_ip() -> str:
@@ -56,6 +72,12 @@ def scan(cfg: Config, photo_source, client, ledger: Ledger) -> Queue:
 
     total = len(maps_places) + len(photo_raws)
     print(f"Matching {total} place(s) with Google Places…", flush=True)
+    log.info(
+        "scan: %d saved place(s), %d photo visit(s)%s",
+        len(maps_places),
+        len(photo_raws),
+        f" since {cfg.since}" if cfg.since else " (whole library)",
+    )
     queue = build_queue(
         maps_places,
         photo_raws,
@@ -71,6 +93,14 @@ def scan(cfg: Config, photo_source, client, ledger: Ledger) -> Queue:
         f"Ready: {len(queue.want_to_try)} to try, {len(queue.been)} been, "
         f"{len(queue.review)} unmatched.",
         flush=True,
+    )
+    log.info(
+        "ready: %d to try, %d been, %d unmatched (%d cached, %d billed lookups)",
+        len(queue.want_to_try),
+        len(queue.been),
+        len(queue.review),
+        hits,
+        getattr(client, "calls", 0),
     )
     return queue
 
@@ -109,12 +139,22 @@ def main(argv: list[str] | None = None) -> None:
     if not argv or argv[0] != "run":
         print("usage: beli-tool run")
         return
-    cfg = load_config()
+    logged_to = setup_logging(LOG_PATH)
+    log.info("--- beli-tool %s starting (cli) ---", __version__)
+    try:
+        cfg = load_config()
+    except RuntimeError as e:
+        log.error("config: %s", e)
+        raise
+    log.info("config: %s", describe(cfg))
     token = secrets.token_urlsafe(8)
     try:
         app, _ = build_app_from_config(cfg, token=token)
     except PlacesError as e:  # setup mistake — print the fix, not a traceback
+        log.error("places: %s", e)
         print(f"\n{e}\n", file=sys.stderr)
+        if logged_to:
+            print(f"(logged to {logged_to})", file=sys.stderr)
         raise SystemExit(1)
     port = 8000
     url = f"http://{local_ip()}:{port}/?t={token}"

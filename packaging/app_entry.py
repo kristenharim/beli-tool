@@ -6,6 +6,7 @@ and any setup error through native dialogs/notifications instead of a terminal
 """
 from __future__ import annotations
 
+import logging
 import secrets
 import socket
 import subprocess
@@ -16,12 +17,15 @@ import webbrowser
 
 import uvicorn
 
-from beli_tool.cli import build_app_from_config, local_ip
-from beli_tool.config import load_config
+from beli_tool import __version__
+from beli_tool.cli import build_app_from_config, describe, local_ip
+from beli_tool.config import LOG_PATH, load_config
+from beli_tool.logsetup import setup_logging
 from beli_tool.photos_source import OsxPhotosSource
 from beli_tool.places_client import PlacesError
 
 PORT = 8000
+log = logging.getLogger("beli_tool.app_entry")
 
 
 def _app_path() -> str:
@@ -63,11 +67,15 @@ def announce_when_ready(url: str) -> None:
 
 
 def main() -> None:
+    setup_logging(LOG_PATH)
+    log.info("--- beli-tool %s starting (.app) ---", __version__)
     try:
         cfg = load_config()
     except Exception as e:  # missing key / config — tell the user, don't die silently
+        log.error("config: %s", e)
         dialog(f"Setup needed:\n\n{e}")
         return
+    log.info("config: %s", describe(cfg))
 
     # probe() opens the Photos library, which is the slow part — say so first,
     # or the app sits silent through it.
@@ -76,7 +84,9 @@ def main() -> None:
     # Full Disk Access has no system prompt — check before the long scan so a
     # denial becomes a clear instruction, not a silent hang or crash.
     source = OsxPhotosSource(since=cfg.since)
-    if source.probe() is not None:
+    probe_error = source.probe()
+    if probe_error is not None:
+        log.error("photos library unreadable (likely Full Disk Access): %s", probe_error)
         dialog(
             "Beli needs Full Disk Access to read your Photos library.\n\n"
             "Open System Settings → Privacy & Security → Full Disk Access, turn "
@@ -89,9 +99,17 @@ def main() -> None:
     try:
         app, _ = build_app_from_config(cfg, photo_source=source, token=token)
     except PlacesError as e:  # key/billing/quota — show the fix, not a stack trace
+        log.error("places: %s", e)
         dialog(str(e))
         return
+    except Exception:
+        # Windowed app: an uncaught traceback would vanish entirely. Record it,
+        # then say where to look.
+        log.exception("unexpected failure while building the worklist")
+        dialog(f"Something went wrong.\n\nDetails were written to:\n{LOG_PATH}")
+        return
     url = f"http://{local_ip()}:{PORT}/?t={token}"
+    log.info("serving on %s", url.split("?")[0])  # no token in the log
     threading.Thread(target=announce_when_ready, args=(url,), daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")  # blocks, keeps app alive
 

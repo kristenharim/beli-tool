@@ -10,7 +10,9 @@ answered.
 
 Set `since` in `config.toml` to bound how far back the Photos scan reaches;
 without it, every run walks your whole library. Set `obsidian_log` to mirror
-every add into an Obsidian note as a running history.
+every add into an Obsidian note as a running history. Every run appends to
+`~/Library/Application Support/beli-tool/beli-tool.log` — the .app has no
+console, so that file is the record of what it did.
 
 ## Install
 

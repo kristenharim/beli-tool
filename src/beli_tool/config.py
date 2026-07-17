@@ -7,6 +7,7 @@ from datetime import date
 from pathlib import Path
 
 DEFAULT_HOME = Path.home() / "Library" / "Application Support" / "beli-tool"
+LOG_PATH = DEFAULT_HOME / "beli-tool.log"
 
 _TEMPLATE = """\
 google_places_api_key = "PASTE_YOUR_KEY_HERE"
