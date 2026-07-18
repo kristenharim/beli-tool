@@ -71,17 +71,17 @@ def main() -> None:
     log.info("--- beli-tool %s starting (.app) ---", __version__)
     try:
         cfg = load_config()
-    except Exception as e:  # missing key / config — tell the user, don't die silently
+    except Exception as e:  # missing key / config: tell the user, don't die silently
         log.error("config: %s", e)
         dialog(f"Setup needed:\n\n{e}")
         return
     log.info("config: %s", describe(cfg))
 
-    # probe() opens the Photos library, which is the slow part — say so first,
+    # probe() opens the Photos library, which is the slow part: say so first,
     # or the app sits silent through it.
     notify("Opening your Photos library… this can take a minute.")
 
-    # Full Disk Access has no system prompt — check before the long scan so a
+    # Full Disk Access has no system prompt: check before the long scan so a
     # denial becomes a clear instruction, not a silent hang or crash.
     source = OsxPhotosSource(since=cfg.since)
     probe_error = source.probe()
@@ -98,7 +98,7 @@ def main() -> None:
     token = secrets.token_urlsafe(8)
     try:
         app, _ = build_app_from_config(cfg, photo_source=source, token=token)
-    except PlacesError as e:  # key/billing/quota — show the fix, not a stack trace
+    except PlacesError as e:  # key/billing/quota: show the fix, not a stack trace
         log.error("places: %s", e)
         dialog(str(e))
         return

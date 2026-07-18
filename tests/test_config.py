@@ -59,7 +59,7 @@ def test_load_config_since_accepts_quoted_and_bare_dates(tmp_path, monkeypatch):
 def test_load_config_seeds_template_on_default_path(tmp_path, monkeypatch):
     monkeypatch.delenv("BELI_PLACES_KEY", raising=False)
     monkeypatch.setattr("beli_tool.config.DEFAULT_HOME", tmp_path / "home")
-    # No key yet, so it still raises — but it must have created a usable home.
+    # No key yet, so it still raises, but it must have created a usable home.
     with pytest.raises(RuntimeError):
         load_config()
     seeded = tmp_path / "home" / "config.toml"

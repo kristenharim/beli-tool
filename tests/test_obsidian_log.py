@@ -49,7 +49,7 @@ def test_survives_a_restart(tmp_path):
 
 
 def test_pipe_in_a_name_is_escaped_and_row_still_parses(tmp_path):
-    # A literal | ends the cell and silently breaks the row — the vault's own
+    # A literal | ends the cell and silently breaks the row: the vault's own
     # formatting rule calls this out, and restaurant names do contain them.
     log = _log(tmp_path)
     log.append("Wine | Bar", "been", "fine", address="1 A St")

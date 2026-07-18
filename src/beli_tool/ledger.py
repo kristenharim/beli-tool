@@ -9,7 +9,7 @@ from pathlib import Path
 def _backup(db_path: str | Path) -> None:
     """Snapshot the previous run's state to <db>.bak before opening it.
 
-    This file is the entire memory of what's been handled — one bad "skip
+    This file is the entire memory of what's been handled: one bad "skip
     selected" spree is otherwise unrecoverable.
     """
     if str(db_path) == ":memory:":

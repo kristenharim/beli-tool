@@ -30,7 +30,7 @@ def _source_with(photos, **kw):
 
 
 def test_since_is_pushed_down_to_osxphotos():
-    # Filtering in osxphotos, not after — that's what bounds the scan.
+    # Filtering in osxphotos, not after: that's what bounds the scan.
     src, db = _source_with([], since=date(2024, 1, 1))
     src.points()
     assert db.seen_kwargs["from_date"] == datetime(2024, 1, 1, 0, 0)

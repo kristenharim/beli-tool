@@ -45,13 +45,13 @@ def match_maps_place(raw: RawPlace, client) -> MatchedPlace:
     results = client.text_search(raw.name or "")
     food = [r for r in results if _FOOD_TYPES & set(r.get("types", []))]
     if not food:
-        # Nothing edible came back (a park, a hotel, or no hit at all) — Beli
+        # Nothing edible came back (a park, a hotel, or no hit at all). Beli
         # only takes restaurants, so surface it rather than mismatching it.
         return MatchedPlace(bucket="want_to_try", status="no_match", raw=raw)
     cand = _candidate(food[0])
     if not _name_matches(raw.name or "", cand.name):
         # Best food hit doesn't look like what she saved. Don't call that
-        # confident — hand it back as a one-tap confirmation instead.
+        # confident; hand it back as a one-tap confirmation instead.
         return MatchedPlace(
             bucket="want_to_try", status="ambiguous", raw=raw, candidates=[cand]
         )

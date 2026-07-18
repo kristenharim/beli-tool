@@ -1,4 +1,4 @@
-# PyInstaller spec — builds "Beli Staging.app", a double-click launcher.
+# PyInstaller spec: builds "Beli Staging.app", a double-click launcher.
 # osxphotos is heavy (pyobjc + data files), so collect it wholesale.
 import re
 

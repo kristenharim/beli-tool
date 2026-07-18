@@ -56,7 +56,7 @@ def _lookup(queue: Queue, place_id: str) -> tuple[str, object]:
     """Find (address, visit_date) for a place_id in the live queue.
 
     The client only posts place_id/name/bucket/rating, but the log wants the
-    address and visit date — they're already on the server, so read them here
+    address and visit date: they're already on the server, so read them here
     rather than widening the request. Ambiguous cards resolve via candidates.
     """
     for items in (queue.want_to_try, queue.been, queue.review):
@@ -91,7 +91,7 @@ def create_app(
     """photo_resolver: optional callable (uuid -> filesystem path | None) used to
     serve a card's photo thumbnail at /api/photo/{uuid}.
 
-    token: if set, every route requires it — supplied as ``?t=<token>`` (in the
+    token: if set, every route requires it. Supplied as ``?t=<token>`` (in the
     phone URL) or the ``beli_token`` cookie that opening that URL sets. Guards
     the LAN server so a shared Wi-Fi neighbor can't read photos/location history.
     token=None disables the check (tests, localhost dev).
@@ -100,7 +100,7 @@ def create_app(
     /api/rescan so new photos/CSVs can be picked up without quitting the app.
 
     obsidian_log: optional ObsidianLog; each added place is mirrored to a vault
-    note. Best-effort — a vault write must never fail the ledger write.
+    note. Best-effort: a vault write must never fail the ledger write.
     """
     app = FastAPI()
     # The live queue is swapped wholesale by a rescan, so route handlers read
@@ -146,7 +146,7 @@ def create_app(
     def rescan(_=Depends(guard)) -> dict:
         if rebuild is None:
             raise HTTPException(status_code=501, detail="rescan unavailable")
-        # Non-blocking: a double-tap must not run two scans at once — they'd
+        # Non-blocking: a double-tap must not run two scans at once. They'd
         # race on the shared photo source's uuid index.
         if not rescan_lock.acquire(blocking=False):
             log.info("rescan rejected: one already running")

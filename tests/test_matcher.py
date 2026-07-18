@@ -61,7 +61,7 @@ def test_match_maps_no_food_at_all_goes_to_review():
 
 
 def test_match_maps_unrelated_name_is_ambiguous_not_confident():
-    # Google returned *a* restaurant, but nothing like what she saved — this
+    # Google returned *a* restaurant, but nothing like what she saved. This
     # used to be silently marked confident.
     client = FakeClient(text=[
         {"place_id": "p9", "name": "Joe's Pizza", "formatted_address": "7 Carmine St",

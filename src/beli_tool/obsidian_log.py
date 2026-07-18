@@ -5,7 +5,7 @@ from pathlib import Path
 
 _RATING_EMOJI = {"loved": "😍 loved", "fine": "😐 fine", "disliked": "😞 disliked"}
 
-# The table lives at the end so appends are a plain write — no parsing, no
+# The table lives at the end so appends are a plain write: no parsing, no
 # rewriting the file. That's why "When to use" precedes "Content" here, unlike
 # the vault's usual reference-note order.
 _HEADER = """\
@@ -37,7 +37,7 @@ already added if the ledger is ever lost.
 def _cell(text: str) -> str:
     """Make a value safe inside a markdown table cell.
 
-    A literal | ends the cell and silently breaks the row — the vault's own
+    A literal | ends the cell and silently breaks the row: the vault's own
     formatting rule calls this out, and restaurant names really do contain one.
     """
     return (text or "").replace("|", "\\|").replace("\n", " ").strip() or "—"
@@ -48,7 +48,7 @@ class ObsidianLog:
 
     Best-effort by design: the vault lives in iCloud and may be mid-sync, absent,
     or read-only. A logging failure must never lose the ledger write it mirrors,
-    so every error is swallowed — the ledger already recorded the truth.
+    so every error is swallowed: the ledger already recorded the truth.
     """
 
     def __init__(self, path: str | Path, today=date.today):

@@ -28,7 +28,7 @@ log = logging.getLogger(__name__)
 
 def describe(cfg: Config) -> str:
     """One-line config summary for the log. Deliberately never includes
-    api_key — the log is a plain file and the key is the one secret here."""
+    api_key: the log is a plain file and the key is the one secret here."""
     return (
         f"since={cfg.since} max_visits={cfg.max_visits} "
         f"saved_dir={cfg.saved_dir} db={cfg.db_path} "
@@ -150,7 +150,7 @@ def main(argv: list[str] | None = None) -> None:
     token = secrets.token_urlsafe(8)
     try:
         app, _ = build_app_from_config(cfg, token=token)
-    except PlacesError as e:  # setup mistake — print the fix, not a traceback
+    except PlacesError as e:  # setup mistake: print the fix, not a traceback
         log.error("places: %s", e)
         print(f"\n{e}\n", file=sys.stderr)
         if logged_to:

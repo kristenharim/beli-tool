@@ -31,9 +31,9 @@ def build_queue(
         if m.status == "no_match":
             q.review.append(m)
         elif m.status == "confident" and m.match and m.match.place_id in handled:
-            pass  # already handled — skip, but still count toward progress
+            pass  # already handled: skip, but still count toward progress
         else:
-            # confident-and-unhandled, or ambiguous — the latter has no .match
+            # confident-and-unhandled, or ambiguous: the latter has no .match
             # to dedupe on, so webapp._visible filters it by candidate instead.
             q.want_to_try.append(m)
         done += 1
@@ -45,7 +45,7 @@ def build_queue(
         if m.status == "no_match":
             q.review.append(m)
         elif m.status == "confident" and m.match and m.match.place_id in handled:
-            pass  # already handled — skip, but still count toward progress
+            pass  # already handled: skip, but still count toward progress
         else:
             q.been.append(m)
         done += 1

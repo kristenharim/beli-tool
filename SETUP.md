@@ -10,7 +10,7 @@ so they're first: Gatekeeper, Full Disk Access, and billing.
 
 ## 1. Open the app once (Gatekeeper)
 
-The app is unsigned — there's no $99/yr Apple Developer cert behind it. macOS
+The app is unsigned. There's no $99/yr Apple Developer cert behind it. macOS
 will refuse a plain double-click on first launch.
 
 **Right-click the app → Open → Open.** Once per install; normal double-clicks
@@ -34,7 +34,7 @@ app by hand:
 > `Beli Staging.app` → make sure the toggle is **on** → reopen Beli.
 
 If it's not granted, the app tells you so and shows its own path. This is *not*
-the "Photos" permission — that one governs a different API and does nothing here.
+the "Photos" permission. That one governs a different API and does nothing here.
 
 > Re-granting after an update is expected: the app is unsigned, so macOS may see
 > a rebuilt version as a different app.
@@ -47,7 +47,7 @@ even though real usage lands in the free tier.
 1. Go to <https://console.cloud.google.com/> and create a project.
 2. **Enable billing** on it (Billing → link an account). Without this every
    lookup fails.
-3. Enable **Places API (New)** — APIs & Services → Library → search for it →
+3. Enable **Places API (New)**: APIs & Services → Library → search for it →
    Enable. Note: "Places API" and "Places API (New)" are *different products*;
    you want the New one.
 4. APIs & Services → Credentials → Create credentials → API key. Copy it.
@@ -58,7 +58,7 @@ cached for 90 days, so re-runs are free. A few hundred places sits inside
 Google's monthly free allowance.
 
 If the key is wrong, billing is off, or the API isn't enabled, Beli says so in
-plain language rather than dying — but it can't run until it's fixed.
+plain language rather than dying, but it can't run until it's fixed.
 
 ## 4. Paste the key into config.toml
 
@@ -80,7 +80,7 @@ max_visits = 300
 ### Optional: mirror adds into Obsidian
 
 Set `obsidian_log` to a note path and every place you tap **Added ✓** on gets
-appended there as a table row — date, place, rating, visit date, address, list.
+appended there as a table row: date, place, rating, visit date, address, list.
 The note is created on first write, with the frontmatter and table your vault
 already uses.
 
@@ -89,7 +89,7 @@ obsidian_log = "~/Library/Mobile Documents/iCloud~md~obsidian/Documents/YOUR_VAU
 ```
 
 The ledger stays the source of truth; this is the readable copy that outlives it.
-Writes are best-effort — if the vault is missing or mid-sync, the add still
+Writes are best-effort: if the vault is missing or mid-sync, the add still
 counts and only the log line is skipped.
 
 ## 5. Export your Google Maps saved lists
@@ -101,14 +101,14 @@ counts and only the log line is skipped.
    into `~/Library/Application Support/beli-tool/inbox/`.
 
 The filename becomes the list name, so keep them meaningfully named. Photos-only
-runs work fine if you skip this — the inbox can stay empty.
+runs work fine if you skip this: the inbox can stay empty.
 
 ## 6. Run it
 
 Open **Beli Staging.app**. It scans, then shows a dialog with a URL like
 `http://192.168.1.42:8000/?t=AbC123`. Open that on your phone (same Wi-Fi).
 
-The `?t=` token is required — it's what stops anyone else on a coffee-shop
+The `?t=` token is required: it's what stops anyone else on a coffee-shop
 network from browsing your photos and location history. It changes every run.
 
 For each card: rate it, tap **Copy name & open Beli**, paste, then tap
@@ -123,15 +123,15 @@ From a terminal instead: `beli-tool run`.
 
 | What you see | What it means |
 |---|---|
-| Nothing happens on double-click | Gatekeeper — right-click → Open (step 1). |
+| Nothing happens on double-click | Gatekeeper: right-click → Open (step 1). |
 | "Beli needs Full Disk Access" | Step 2. There is no prompt; add it manually. |
 | "Google rejected the Places request" | Key wrong, billing off, or Places API (New) not enabled (step 3). |
-| "rate-limiting or you're out of quota" | Over the free tier or hitting limits — check the quota page. |
+| "rate-limiting or you're out of quota" | Over the free tier or hitting limits: check the quota page. |
 | "Add your Google Places API key to…" | The template key is still in `config.toml` (step 4). |
 | 0 saved places found | No `.csv` in `inbox/`, or they're the wrong Takeout export (step 5). |
 | Phone can't load the URL | Different Wi-Fi, or the `?t=` token is missing/stale. |
 | A visit matched the wrong restaurant | Tap Skip. GPS drifts indoors; the nearest food hit isn't always right. |
-| Places under "Couldn't match" | No restaurant found there — a home-cooked meal, a park, a bad GPS fix. |
+| Places under "Couldn't match" | No restaurant found there: a home-cooked meal, a park, a bad GPS fix. |
 
 **Still stuck? Read the log.** Every run appends to
 `~/Library/Application Support/beli-tool/beli-tool.log`: what the config was, how
@@ -144,13 +144,13 @@ tail -50 ~/Library/Application\ Support/beli-tool/beli-tool.log
 
 It never contains your API key. It rotates at ~500KB, keeping 2 old copies.
 
-**Where things live** — all under `~/Library/Application Support/beli-tool/`:
+**Where things live**, all under `~/Library/Application Support/beli-tool/`:
 
-- `config.toml` — your key and settings
-- `inbox/` — Takeout CSVs
-- `ledger.sqlite` — what you've handled + the Places cache
-- `ledger.sqlite.bak` — the previous run's copy, made at every startup
-- `beli-tool.log` — what happened, every run
+- `config.toml`: your key and settings
+- `inbox/`: Takeout CSVs
+- `ledger.sqlite`: what you've handled + the Places cache
+- `ledger.sqlite.bak`: the previous run's copy, made at every startup
+- `beli-tool.log`: what happened, every run
 
 Plus, if `obsidian_log` is set, the vault note you pointed it at.
 

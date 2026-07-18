@@ -1,6 +1,6 @@
 [project]
 name = "beli-tool"
-dynamic = ["version"]  # read from beli_tool.__version__ — bump it there only
+dynamic = ["version"]  # read from beli_tool.__version__, bump it there only
 requires-python = ">=3.11"
 dependencies = [
   "osxphotos>=0.68",

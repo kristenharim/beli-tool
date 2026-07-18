@@ -11,7 +11,7 @@ class PlacesCache:
 
     Deliberately separate from the handled ledger: the ledger records what you
     acted on, this records what Google answered. Without it, every run
-    re-queries — and re-bills — every place you haven't handled yet, forever.
+    re-queries (and re-bills) every place you haven't handled yet, forever.
 
     Empty responses are cached too: a place that matched nothing is exactly the
     one that would otherwise be paid for on every single run.

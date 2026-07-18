@@ -3,15 +3,15 @@
 Aggregates Google Maps saved lists (→ Want to Try) and GPS-stamped photos
 (→ Been) into a phone-friendly worklist for fast manual entry into Beli.
 Matching uses each photo's embedded GPS coordinate (not image content) via the
-Google Places API (New). A local SQLite ledger keeps it incremental — each run
-shows only places you haven't handled yet — and Places responses are cached in
+Google Places API (New). A local SQLite ledger keeps it incremental (each run
+shows only places you haven't handled yet), and Places responses are cached in
 the same file, so re-runs don't re-query (or re-pay for) what Google already
 answered.
 
 Set `since` in `config.toml` to bound how far back the Photos scan reaches;
 without it, every run walks your whole library. Set `obsidian_log` to mirror
 every add into an Obsidian note as a running history. Every run appends to
-`~/Library/Application Support/beli-tool/beli-tool.log` — the .app has no
+`~/Library/Application Support/beli-tool/beli-tool.log`. The .app has no
 console, so that file is the record of what it did.
 
 ## Install
@@ -27,7 +27,7 @@ shows the phone URL in a dialog.
 ## One-time setup
 
 **→ [SETUP.md](SETUP.md)** walks the whole thing: the Gatekeeper first-open, the
-Full Disk Access grant (no prompt — you add it by hand), the Places API key and
+Full Disk Access grant (no prompt, you add it by hand), the Places API key and
 billing, the Takeout export, and a troubleshooting table.
 
 First run creates `~/Library/Application Support/beli-tool/` with a template
@@ -35,7 +35,7 @@ First run creates `~/Library/Application Support/beli-tool/` with a template
 
 > **Upgrading from 0.1.0?** Config and ledger moved to
 > `~/Library/Application Support/beli-tool/`. Copy your old `config.toml` and
-> `ledger.sqlite` in, or just paste your key into the new template — you'll only
+> `ledger.sqlite` in, or just paste your key into the new template. You'll only
 > lose the record of which places you'd already handled.
 
 ## Building the .app yourself
@@ -53,7 +53,7 @@ Pushing a `v*` tag builds and publishes it via GitHub Actions (`.github/workflow
 4. Rank each Been place (😍/😐/😞), tap "Copy & open Beli", paste, add, then
    tap "Added ✓". Tap through Want to Try the same way.
 
-**Rescan** (top right) re-reads photos and CSVs in place — no need to quit and
+**Rescan** (top right) re-reads photos and CSVs in place: no need to quit and
 reopen after dropping in a new export. Cached lookups make it cheap.
 
 The final tap into Beli is manual by design (Beli has no import/API).

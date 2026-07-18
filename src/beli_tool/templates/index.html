@@ -219,7 +219,7 @@ function card(it, isBeen){
   }
 
   h += '<div class="body">';
-  // Unmatched maps saves have no resolved name — show what she saved, or the
+  // Unmatched maps saves have no resolved name: show what she saved, or the
   // candidate buttons below are a confirmation with nothing to confirm against.
   h += `<div class="name">${esc(it.name) || esc(it.raw_name) || '(pick one below)'}</div>`;
   if(it.address) h += `<div class="muted">${esc(it.address)}</div>`;

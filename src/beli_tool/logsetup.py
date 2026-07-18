@@ -15,7 +15,7 @@ ROOT = "beli_tool"
 def setup_logging(path: str | Path, level: int = logging.INFO) -> Path | None:
     """Send the log to a rotating file. Returns the path, or None on failure.
 
-    The .app is windowed — every print() in it goes to a stdout nobody will ever
+    The .app is windowed: every print() in it goes to a stdout nobody will ever
     read, so when something misbehaves months from now this file is the only
     account of what happened.
 

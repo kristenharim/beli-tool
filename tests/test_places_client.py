@@ -103,7 +103,7 @@ def test_429_after_retries_becomes_a_quota_message(monkeypatch):
 
 
 def test_500_still_raises_the_raw_http_error(monkeypatch):
-    # Not a setup mistake — don't dress a server fault up as one.
+    # Not a setup mistake: don't dress a server fault up as one.
     monkeypatch.setattr("beli_tool.places_client.time.sleep", lambda s: None)
 
     def handler(request):

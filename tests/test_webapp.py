@@ -131,7 +131,7 @@ def test_rescan_preserves_the_ledger():
     client = TestClient(create_app(_queue(), led, rebuild=_queue))
     client.post("/api/added", json={"place_id": "b1", "name": "Lilia", "bucket": "been", "rating": "loved"})
     client.post("/api/rescan")
-    # The rescan re-finds Lilia, but it stays handled — the point of rescanning
+    # The rescan re-finds Lilia, but it stays handled: the point of rescanning
     # is picking up new places, not re-litigating old ones.
     assert led.is_handled("b1")
     assert client.get("/api/queue").json()["been"] == []
