@@ -10,12 +10,17 @@ DEFAULT_HOME = Path.home() / "Library" / "Application Support" / "beli-tool"
 LOG_PATH = DEFAULT_HOME / "beli-tool.log"
 
 _TEMPLATE = """\
+# Matching provider: "google" (Places API (New), needs the key below plus a
+# billing account) or "osm" (OpenStreetMap via Overpass + Nominatim: free, no
+# key, no billing; coverage is thinner, so more visits land in review).
+provider = "google"
 google_places_api_key = "PASTE_YOUR_KEY_HERE"
 # Folder holding your Google Takeout "Saved/*.csv" lists.
 saved_dir = "{home}/inbox"
 db_path = "{home}/ledger.sqlite"
 # Cap on how many photo "visits" (most recent first) to match per run.
-# Each visit costs one Google Places lookup; raise this to process more backlog.
+# Each visit is one lookup (billed on "google", free on "osm"); raise this to
+# process more backlog.
 max_visits = 300
 # Ignore photos taken before this date. Keeps the library scan bounded —
 # without it every run walks your entire Photos history.
@@ -32,6 +37,7 @@ class Config:
     api_key: str
     saved_dir: Path
     db_path: Path
+    provider: str = "google"
     max_visits: int = 300
     since: date | None = None
     obsidian_log: Path | None = None
@@ -60,11 +66,18 @@ def load_config(path: str | Path | None = None) -> Config:
     data: dict = {}
     if path.exists():
         data = tomllib.load(path.open("rb"))
+    provider = str(data.get("provider", "google")).lower()
+    if provider not in ("google", "osm"):
+        raise RuntimeError(
+            f'config: provider must be "google" or "osm", got "{provider}" in {path}'
+        )
     api_key = data.get("google_places_api_key") or os.environ.get("BELI_PLACES_KEY", "")
-    if not api_key or api_key == "PASTE_YOUR_KEY_HERE":
+    if provider == "google" and (not api_key or api_key == "PASTE_YOUR_KEY_HERE"):
         raise RuntimeError(
             f"Add your Google Places API key to {path}\n"
-            "(or set the BELI_PLACES_KEY environment variable), then reopen."
+            "(or set the BELI_PLACES_KEY environment variable), then reopen.\n"
+            'No Google billing account? Set provider = "osm" in the same file '
+            "to match against OpenStreetMap for free instead."
         )
     saved_dir = Path(data.get("saved_dir", DEFAULT_HOME / "inbox")).expanduser()
     db_path = Path(data.get("db_path", DEFAULT_HOME / "ledger.sqlite")).expanduser()
@@ -82,6 +95,7 @@ def load_config(path: str | Path | None = None) -> Config:
         api_key=api_key,
         saved_dir=saved_dir,
         db_path=db_path,
+        provider=provider,
         max_visits=max_visits,
         since=since,
         obsidian_log=obsidian_log,

@@ -84,3 +84,27 @@ def test_load_config_max_visits_default_and_override(tmp_path, monkeypatch):
     override = tmp_path / "b.toml"
     override.write_text('saved_dir = "/tmp/x"\nmax_visits = 50\n')
     assert load_config(override).max_visits == 50
+
+
+def test_load_config_provider_osm_needs_no_key(tmp_path, monkeypatch):
+    monkeypatch.delenv("BELI_PLACES_KEY", raising=False)
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('provider = "osm"\nsaved_dir = "/tmp/x"\n')
+    cfg = load_config(cfg_file)
+    assert cfg.provider == "osm"
+    assert cfg.api_key == ""
+
+
+def test_load_config_provider_defaults_to_google(tmp_path, monkeypatch):
+    monkeypatch.setenv("BELI_PLACES_KEY", "K")
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('saved_dir = "/tmp/x"\n')
+    assert load_config(cfg_file).provider == "google"
+
+
+def test_load_config_unknown_provider_raises(tmp_path, monkeypatch):
+    monkeypatch.setenv("BELI_PLACES_KEY", "K")
+    cfg_file = tmp_path / "config.toml"
+    cfg_file.write_text('provider = "bing"\n')
+    with pytest.raises(RuntimeError):
+        load_config(cfg_file)

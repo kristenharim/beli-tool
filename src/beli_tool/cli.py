@@ -15,6 +15,7 @@ from beli_tool.ledger import Ledger
 from beli_tool.logsetup import setup_logging
 from beli_tool.maps_collector import collect_maps
 from beli_tool.obsidian_log import ObsidianLog
+from beli_tool.osm_client import OsmClient
 from beli_tool.photos_collector import collect_photos
 from beli_tool.photos_source import OsxPhotosSource
 from beli_tool.pipeline import Queue, build_queue
@@ -30,7 +31,7 @@ def describe(cfg: Config) -> str:
     """One-line config summary for the log. Deliberately never includes
     api_key: the log is a plain file and the key is the one secret here."""
     return (
-        f"since={cfg.since} max_visits={cfg.max_visits} "
+        f"provider={cfg.provider} since={cfg.since} max_visits={cfg.max_visits} "
         f"saved_dir={cfg.saved_dir} db={cfg.db_path} "
         f"obsidian_log={'on' if cfg.obsidian_log else 'off'}"
     )
@@ -71,7 +72,8 @@ def scan(cfg: Config, photo_source, client, ledger: Ledger) -> Queue:
         )
 
     total = len(maps_places) + len(photo_raws)
-    print(f"Matching {total} place(s) with Google Places…", flush=True)
+    provider_name = "OpenStreetMap" if cfg.provider == "osm" else "Google Places"
+    print(f"Matching {total} place(s) with {provider_name}…", flush=True)
     log.info(
         "scan: %d saved place(s), %d photo visit(s)%s",
         len(maps_places),
@@ -112,7 +114,12 @@ def build_app_from_config(
         since=cfg.since,
         on_progress=lambda n: print(f"\r  scanned {n} photos…", end="", flush=True),
     )
-    client = client or PlacesClient(cfg.api_key, cache=PlacesCache(cfg.db_path))
+    if client is None:
+        cache = PlacesCache(cfg.db_path)
+        if cfg.provider == "osm":
+            client = OsmClient(cache=cache)
+        else:
+            client = PlacesClient(cfg.api_key, cache=cache)
     ledger = Ledger(cfg.db_path)
 
     def rebuild() -> Queue:

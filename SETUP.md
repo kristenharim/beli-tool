@@ -41,6 +41,13 @@ the "Photos" permission. That one governs a different API and does nothing here.
 
 ## 3. Get a Google Places API key (with billing on)
 
+> **Don't want a Google billing account?** Skip this step and step 4: set
+> `provider = "osm"` in `config.toml` and matching runs against OpenStreetMap
+> (Overpass + Nominatim) for free, no key needed. The trade is thinner
+> coverage, so more places land in the review queue. Lookups are paced to
+> about one per second per the OSM fair-use policy; the cache means each
+> place is only ever looked up once.
+
 Matching goes through **Places API (New)**. Google requires a billing account
 even though real usage lands in the free tier.
 

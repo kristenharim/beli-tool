@@ -3,9 +3,12 @@
 Aggregates Google Maps saved lists (→ Want to Try) and GPS-stamped photos
 (→ Been) into a phone-friendly worklist for fast manual entry into Beli.
 Matching uses each photo's embedded GPS coordinate (not image content) via the
-Google Places API (New). A local SQLite ledger keeps it incremental (each run
-shows only places you haven't handled yet), and Places responses are cached in
-the same file, so re-runs don't re-query (or re-pay for) what Google already
+Google Places API (New), or for free via OpenStreetMap: set `provider = "osm"`
+in `config.toml` and matching goes through Overpass + Nominatim instead, with
+no API key and no billing account (coverage is thinner, so more places land in
+the review queue). A local SQLite ledger keeps it incremental (each run
+shows only places you haven't handled yet), and lookup responses are cached in
+the same file, so re-runs don't re-query (or re-pay for) what was already
 answered.
 
 Set `since` in `config.toml` to bound how far back the Photos scan reaches;
