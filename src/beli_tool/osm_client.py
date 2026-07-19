@@ -8,13 +8,18 @@ import httpx
 from beli_tool import __version__
 from beli_tool.places_client import PlacesError, _retry_delay
 
-_OVERPASS = "https://overpass-api.de/api/interpreter"
+# Overpass mirrors, rotated between retries: the main instance throws long
+# stretches of 504 under load, and a run of hundreds of lookups will hit one.
+_OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
 _NOMINATIM = "https://nominatim.openstreetmap.org/search"
-# Both are community-run servers with a roughly 1 request/second fair-use
+# All community-run servers with a roughly 1 request/second fair-use
 # policy. Nominatim also requires a real User-Agent naming the app.
 _USER_AGENT = f"beli-tool/{__version__} (github.com/kristenharim/beli-tool)"
 _MIN_INTERVAL_S = 1.0
-_MAX_RETRIES = 5
+_MAX_RETRIES = 8
 
 # OSM tag values mapped into the matcher's type vocabulary (see
 # matcher._FOOD_TYPES). Anything unmapped passes through as-is and the
@@ -69,7 +74,7 @@ class OsmClient:
         key = f"osm:search:{json.dumps(params, sort_keys=True)}"
         return self._fetch(
             key,
-            lambda: self._http.get(_NOMINATIM, params=params),
+            lambda attempt: self._http.get(_NOMINATIM, params=params),
             _parse_nominatim,
         )
 
@@ -83,7 +88,9 @@ class OsmClient:
         key = f"osm:nearby:{radius_m}:{round(lat, 6)}:{round(lon, 6)}"
         return self._fetch(
             key,
-            lambda: self._http.post(_OVERPASS, data={"data": q}),
+            lambda attempt: self._http.post(
+                _OVERPASS_URLS[attempt % len(_OVERPASS_URLS)], data={"data": q}
+            ),
             _parse_overpass,
         )
 
@@ -101,15 +108,20 @@ class OsmClient:
                 return cached
         for attempt in range(_MAX_RETRIES + 1):
             self._pace()
-            r = send()
+            r = send(attempt)
             if (r.status_code == 429 or r.status_code >= 500) and attempt < _MAX_RETRIES:
                 time.sleep(_retry_delay(r, attempt))
                 continue
-            if r.status_code in (403, 429):
+            if r.status_code in (403, 429) or r.status_code >= 500:
+                # A dead run with a traceback would throw away nothing (the
+                # cache holds every finished lookup), but say so instead of
+                # crashing.
                 raise PlacesError(
-                    "OpenStreetMap is rate-limiting this machine. It is free "
-                    "community infrastructure, so wait a few minutes and rerun. "
-                    "The cache means finished lookups are never repeated."
+                    f"OpenStreetMap kept failing (HTTP {r.status_code}) after "
+                    f"{_MAX_RETRIES + 1} tries across its mirrors. The servers "
+                    "are rate-limiting or overloaded. Finished lookups are "
+                    "cached, so rerun in a few minutes and it resumes where it "
+                    "stopped."
                 )
             r.raise_for_status()
             self.calls += 1

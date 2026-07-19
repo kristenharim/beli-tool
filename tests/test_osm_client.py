@@ -1,8 +1,10 @@
 from urllib.parse import unquote_plus
 
 import httpx
+import pytest
 
 from beli_tool.osm_client import OsmClient
+from beli_tool.places_client import PlacesError
 from beli_tool.places_cache import PlacesCache
 
 
@@ -109,3 +111,27 @@ def test_retries_transient_failures_then_succeeds(monkeypatch):
 
     assert _client(handler).nearby_food(1.0, 2.0) == []
     assert seen["n"] == 3
+
+
+def test_rotates_to_mirror_on_server_error(monkeypatch):
+    monkeypatch.setattr("beli_tool.osm_client._retry_delay", lambda r, a: 0)
+    hosts = []
+
+    def handler(request):
+        hosts.append(request.url.host)
+        if len(hosts) == 1:
+            return httpx.Response(504)
+        return httpx.Response(200, json={"elements": []})
+
+    assert _client(handler).nearby_food(1.0, 2.0) == []
+    assert hosts[0] != hosts[1]  # second attempt went to the other mirror
+
+
+def test_sustained_server_errors_raise_actionable_message(monkeypatch):
+    monkeypatch.setattr("beli_tool.osm_client._retry_delay", lambda r, a: 0)
+
+    def handler(request):
+        return httpx.Response(504)
+
+    with pytest.raises(PlacesError, match="rerun in a few minutes"):
+        _client(handler).nearby_food(1.0, 2.0)
