@@ -135,3 +135,28 @@ def test_sustained_server_errors_raise_actionable_message(monkeypatch):
 
     with pytest.raises(PlacesError, match="rerun in a few minutes"):
         _client(handler).nearby_food(1.0, 2.0)
+
+
+def test_transport_timeout_retries_then_succeeds(monkeypatch):
+    seen = {"n": 0}
+
+    def handler(request):
+        seen["n"] += 1
+        if seen["n"] == 1:
+            raise httpx.ReadTimeout("read timed out")
+        return httpx.Response(200, json={"elements": []})
+
+    c = _client(handler)
+    monkeypatch.setattr("beli_tool.osm_client.time.sleep", lambda s: None)
+    assert c.nearby_food(1.0, 2.0) == []
+    assert seen["n"] == 2
+
+
+def test_sustained_timeouts_raise_actionable_message(monkeypatch):
+    monkeypatch.setattr("beli_tool.osm_client.time.sleep", lambda s: None)
+
+    def handler(request):
+        raise httpx.ReadTimeout("read timed out")
+
+    with pytest.raises(PlacesError, match="rerun in a few minutes"):
+        _client(handler).nearby_food(1.0, 2.0)

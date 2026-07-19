@@ -108,21 +108,21 @@ class OsmClient:
                 return cached
         for attempt in range(_MAX_RETRIES + 1):
             self._pace()
-            r = send(attempt)
+            # An overloaded Overpass shows up two ways: a 5xx status, or a
+            # request that hangs past the read timeout. Both retry against
+            # the next mirror; both end in the same resume-later error.
+            try:
+                r = send(attempt)
+            except httpx.TransportError as e:
+                if attempt < _MAX_RETRIES:
+                    time.sleep(min(2.0**attempt, 30.0))
+                    continue
+                raise _overloaded(f"kept timing out ({type(e).__name__})") from e
             if (r.status_code == 429 or r.status_code >= 500) and attempt < _MAX_RETRIES:
                 time.sleep(_retry_delay(r, attempt))
                 continue
             if r.status_code in (403, 429) or r.status_code >= 500:
-                # A dead run with a traceback would throw away nothing (the
-                # cache holds every finished lookup), but say so instead of
-                # crashing.
-                raise PlacesError(
-                    f"OpenStreetMap kept failing (HTTP {r.status_code}) after "
-                    f"{_MAX_RETRIES + 1} tries across its mirrors. The servers "
-                    "are rate-limiting or overloaded. Finished lookups are "
-                    "cached, so rerun in a few minutes and it resumes where it "
-                    "stopped."
-                )
+                raise _overloaded(f"kept failing (HTTP {r.status_code})")
             r.raise_for_status()
             self.calls += 1
             places = parse(r.json())
@@ -130,6 +130,17 @@ class OsmClient:
                 self._cache.put(key, places)
             return places
         raise RuntimeError("unreachable")  # pragma: no cover
+
+
+def _overloaded(what: str) -> PlacesError:
+    # A dead run with a traceback would throw away nothing (the cache holds
+    # every finished lookup), but say so instead of crashing.
+    return PlacesError(
+        f"OpenStreetMap {what} after {_MAX_RETRIES + 1} tries across its "
+        "mirrors. The servers are rate-limiting or overloaded. Finished "
+        "lookups are cached, so rerun in a few minutes and it resumes where "
+        "it stopped."
+    )
 
 
 def _parse_nominatim(data: list) -> list[dict]:
